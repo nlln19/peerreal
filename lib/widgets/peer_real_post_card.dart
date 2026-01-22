@@ -29,6 +29,9 @@ class _PeerRealPostCardState extends State<PeerRealPostCard> {
   late final bool _isMe;
   String? _authorName;
 
+  // Track which image is currently in the main position
+  bool _showMainAsLarge = true;
+
   @override
   void initState() {
     super.initState();
@@ -93,6 +96,14 @@ class _PeerRealPostCardState extends State<PeerRealPostCard> {
     }
   }
 
+  void _swapImages() {
+    if (_selfieData != null) {
+      setState(() {
+        _showMainAsLarge = !_showMainAsLarge;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final createdAtMs = widget.doc['createdAt'] as int?;
@@ -109,6 +120,10 @@ class _PeerRealPostCardState extends State<PeerRealPostCard> {
         (_isMe
             ? 'You'
             : (_authorId.isNotEmpty ? _authorId.substring(0, 8) : 'Unknown'));
+
+    // Determine which image to show where
+    final largeImage = _showMainAsLarge ? _imageData : _selfieData;
+    final smallImage = _showMainAsLarge ? _selfieData : _imageData;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12),
@@ -169,54 +184,62 @@ class _PeerRealPostCardState extends State<PeerRealPostCard> {
                         : Stack(
                             fit: StackFit.expand,
                             children: [
-                              // main image
-                              Image.memory(
-                                _imageData!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  logger.e('❌ Main image decode error: $error');
-                                  return const Center(
-                                    child: Icon(
-                                      Icons.broken_image,
-                                      color: Colors.white70,
-                                    ),
-                                  );
-                                },
+                              // Main/large image - make it clickable
+                              GestureDetector(
+                                onTap: _swapImages,
+                                child: Image.memory(
+                                  largeImage!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    logger.e(
+                                      '❌ Main image decode error: $error',
+                                    );
+                                    return const Center(
+                                      child: Icon(
+                                        Icons.broken_image,
+                                        color: Colors.white70,
+                                      ),
+                                    );
+                                  },
+                                ),
                               ),
 
-                              // Selfie top right
-                              if (_selfieData != null)
+                              // Small image in top right corner - make it clickable
+                              if (smallImage != null)
                                 Positioned(
                                   right: 12,
                                   top: 12,
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(10),
-                                    child: Container(
-                                      width: 90,
-                                      height: 120,
-                                      decoration: BoxDecoration(
-                                        border: Border.all(
-                                          color: Colors.white,
-                                          width: 1.5,
+                                  child: GestureDetector(
+                                    onTap: _swapImages,
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(10),
+                                      child: Container(
+                                        width: 90,
+                                        height: 120,
+                                        decoration: BoxDecoration(
+                                          border: Border.all(
+                                            color: Colors.white,
+                                            width: 1.5,
+                                          ),
                                         ),
-                                      ),
-                                      child: Image.memory(
-                                        _selfieData!,
-                                        fit: BoxFit.cover,
-                                        errorBuilder:
-                                            (context, error, stackTrace) {
-                                              logger.e(
-                                                '❌ Selfie decode error: $error',
-                                              );
-                                              return const ColoredBox(
-                                                color: Colors.black54,
-                                                child: Icon(
-                                                  Icons.broken_image,
-                                                  color: Colors.white70,
-                                                  size: 20,
-                                                ),
-                                              );
-                                            },
+                                        child: Image.memory(
+                                          smallImage,
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) {
+                                                logger.e(
+                                                  '❌ Selfie decode error: $error',
+                                                );
+                                                return const ColoredBox(
+                                                  color: Colors.black54,
+                                                  child: Icon(
+                                                    Icons.broken_image,
+                                                    color: Colors.white70,
+                                                    size: 20,
+                                                  ),
+                                                );
+                                              },
+                                        ),
                                       ),
                                     ),
                                   ),
