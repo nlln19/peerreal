@@ -46,7 +46,12 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	
-	<!-- Camera Permissions - ADD THESE -->
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Wir nutzen Bluetooth, um Geräte in der Nähe zu finden und zu verbinden.</string>
+
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>Wir nutzen Bluetooth, um Geräte in der Nähe zu finden und zu verbinden.</string>
+
 	<key>NSCameraUsageDescription</key>
 	<string>PeerReal needs access to your camera to capture moments and take selfies</string>
 	<key>NSMicrophoneUsageDescription</key>
