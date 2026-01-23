@@ -6,7 +6,6 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:uuid/uuid.dart';
 import '../services/logger_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'notification_service.dart';
 
 class DittoService {
   static final DittoService instance = DittoService._internal();
@@ -30,9 +29,8 @@ class DittoService {
   final Map<String, String> _profileNameCache =
       {}; // peerId -> displayName(Nickname)
 
-  // Notification tracking
-  StoreObserver? _postObserver;
-  final Set<String> _seenPostIds = {};
+  // Daily window tracking
+  String _currentDailyWindowId = '';
 
   Future<Ditto> init() async {
     if (_ditto != null) return _ditto!;
@@ -78,76 +76,7 @@ class DittoService {
 
     unawaited(_loadOwnProfileDisplayName());
 
-    // Start listening for new posts to send notifications
-    _startPostNotificationListener();
-
     return ditto;
-  }
-
-  void _startPostNotificationListener() {
-    final d = _ditto;
-    if (d == null) return;
-
-    // First, load existing posts to avoid notifying about old posts
-    d.store
-        .execute('SELECT _id FROM reals', arguments: {})
-        .then((result) {
-          for (final item in result.items) {
-            final docId = item.value['_id'] as String;
-            _seenPostIds.add(docId);
-          }
-          logger.i(
-            '👂 Loaded ${_seenPostIds.length} existing posts to skip notifications',
-          );
-        })
-        .catchError((e) {
-          logger.e('❌ Error loading existing posts: $e');
-        });
-
-    // Observe all posts
-    _postObserver = d.store.registerObserver(
-      'SELECT * FROM reals ORDER BY createdAt DESC',
-      arguments: {},
-    );
-
-    _postObserver?.changes.listen((result) async {
-      for (final item in result.items) {
-        final doc = item.value;
-        final postId = doc['_id'] as String;
-        final author = doc['author'] as String?;
-
-        // Skip if it's our own post or we've already notified about it
-        if (author == null ||
-            author == localPeerId ||
-            _seenPostIds.contains(postId)) {
-          continue;
-        }
-
-        // Check if this is a friend's post
-        final friendshipStatus = await getFriendshipStatusWith(author);
-
-        if (friendshipStatus == 'accepted') {
-          // Get author's display name
-          final authorName = await getDisplayNameForPeer(author);
-
-          // Show notification
-          try {
-            await NotificationService.instance.showNewPostNotification(
-              authorName: authorName,
-              authorId: author,
-            );
-            logger.i('🔔 Notified about post from $authorName');
-          } catch (e) {
-            logger.e('❌ Error showing notification: $e');
-          }
-        }
-
-        // Mark as seen regardless of friendship status
-        _seenPostIds.add(postId);
-      }
-    });
-
-    logger.i('👂 Started listening for new posts');
   }
 
   Future<void> _loadOwnProfileDisplayName() async {
@@ -176,6 +105,30 @@ class DittoService {
       }
     } catch (e) {
       logger.e('❌ Error loading own profile: $e');
+    }
+  }
+
+  // ---------- DAILY WINDOW LOGIC ----------
+
+  String _generateDailyWindowId() {
+    // Generate a daily window ID based on current date
+    // Format: YYYY-MM-DD
+    final now = DateTime.now();
+    return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+  }
+
+  Future<String> getCurrentDailyWindowId() async {
+    if (_currentDailyWindowId.isEmpty) {
+      _currentDailyWindowId = _generateDailyWindowId();
+    }
+    return _currentDailyWindowId;
+  }
+
+  Future<void> checkAndUpdateDailyWindow() async {
+    final newWindowId = _generateDailyWindowId();
+    if (_currentDailyWindowId != newWindowId) {
+      _currentDailyWindowId = newWindowId;
+      logger.i('📅 New daily window started: $_currentDailyWindowId');
     }
   }
 
@@ -318,6 +271,8 @@ class DittoService {
         '✅ Attachment created. id=${attachment.id}, len=${attachment.len}',
       );
 
+      final dailyWindowId = await getCurrentDailyWindowId();
+
       final newDocument = {
         "name":
             fileName ?? 'photo_${DateTime.now().millisecondsSinceEpoch}.jpg',
@@ -325,6 +280,7 @@ class DittoService {
         "attachment": attachment,
         "author": localPeerId,
         "size": imageBytes.length,
+        "dailyWindowId": dailyWindowId,
       };
 
       await d.store.execute(
@@ -335,7 +291,7 @@ class DittoService {
         arguments: {"newDocument": newDocument},
       );
 
-      logger.i('✅ Document saved to Ditto');
+      logger.i('✅ Document saved to Ditto with window ID: $dailyWindowId');
     } catch (e) {
       logger.e('❌ Error saving image: $e');
     }
@@ -364,6 +320,8 @@ class DittoService {
         '✅ Attachments created: main=${mainAttachment.id}, selfie=${selfieAttachment.id}',
       );
 
+      final dailyWindowId = await getCurrentDailyWindowId();
+
       final newDocument = {
         "name":
             fileName ?? 'peerreal_${DateTime.now().millisecondsSinceEpoch}.jpg',
@@ -373,6 +331,7 @@ class DittoService {
         "author": localPeerId,
         "mainSize": mainBytes.length,
         "selfieSize": selfieBytes.length,
+        "dailyWindowId": dailyWindowId,
       };
 
       await d.store.execute(
@@ -383,7 +342,7 @@ class DittoService {
         arguments: {"newDocument": newDocument},
       );
 
-      logger.i('✅ Dual Image saved to Ditto');
+      logger.i('✅ Dual Image saved to Ditto with window ID: $dailyWindowId');
     } catch (e) {
       logger.e('❌ Error saving dual image: $e');
     }
@@ -671,7 +630,6 @@ class DittoService {
   }
 
   void dispose() {
-    _postObserver?.cancel();
     _ditto?.stopSync();
     _ditto?.close();
     _ditto = null;

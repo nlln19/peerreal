@@ -2,6 +2,7 @@ import 'package:ditto_live/ditto_live.dart';
 import 'package:flutter/cupertino.dart';
 import 'dart:typed_data';
 
+import '../widgets/next_post_timer.dart';
 import 'package:flutter/material.dart';
 import '../services/dql_builder_service.dart';
 import '../services/ditto_service.dart';
@@ -23,6 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Ditto? _ditto;
   final ScrollController _scrollController = ScrollController();
   int _feedFilter = 0; // 0 = All, 1 = Friends
+  String? _currentWindowId;
 
   @override
   void initState() {
@@ -33,9 +35,11 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _init() async {
     await PermissionService.requestP2PPermissions();
     final ditto = await DittoService.instance.init();
+    final windowId = await DittoService.instance.getCurrentDailyWindowId();
     if (!mounted) return;
     setState(() {
       _ditto = ditto;
+      _currentWindowId = windowId;
     });
   }
 
@@ -71,7 +75,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    if (_ditto == null) {
+    if (_ditto == null || _currentWindowId == null) {
       return Scaffold(
         body: Center(
           child: CircularProgressIndicator(color: theme.colorScheme.primary),
@@ -157,6 +161,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Column(
         children: [
+          const NextPostTimer(),
           const SizedBox(height: 8),
 
           Padding(
@@ -220,12 +225,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (to != null && to != me) friendIds.add(to);
                 }
 
+                // UPDATED: Filter by current daily window
                 return DqlBuilderService(
                   ditto: _ditto!,
                   query: '''
                     SELECT * FROM reals
+                    WHERE dailyWindowId = :windowId
                     ORDER BY createdAt DESC
                   ''',
+                  queryArgs: {'windowId': _currentWindowId!},
                   builder: (context, realsResult) {
                     var reals = realsResult.items
                         .map((item) => Map<String, dynamic>.from(item.value))
@@ -253,7 +261,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               SizedBox(height: 16),
                               Text(
-                                'Share your first PeerReal Moment',
+                                'No moments yet today',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: Colors.white70,
@@ -263,7 +271,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               SizedBox(height: 8),
                               Text(
-                                'Tap the camera button to take your PeerReal moment!😜',
+                                'Be the first to share a moment today! 📸',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: Colors.white38,
