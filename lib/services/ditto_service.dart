@@ -6,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:uuid/uuid.dart';
 import '../services/logger_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'notification_service.dart';
 
 class DittoService {
   static final DittoService instance = DittoService._internal();
@@ -28,6 +29,10 @@ class DittoService {
 
   final Map<String, String> _profileNameCache =
       {}; // peerId -> displayName(Nickname)
+
+  // Notification tracking
+  StoreObserver? _postObserver;
+  final Set<String> _seenPostIds = {};
 
   Future<Ditto> init() async {
     if (_ditto != null) return _ditto!;
@@ -73,7 +78,76 @@ class DittoService {
 
     unawaited(_loadOwnProfileDisplayName());
 
+    // Start listening for new posts to send notifications
+    _startPostNotificationListener();
+
     return ditto;
+  }
+
+  void _startPostNotificationListener() {
+    final d = _ditto;
+    if (d == null) return;
+
+    // First, load existing posts to avoid notifying about old posts
+    d.store
+        .execute('SELECT _id FROM reals', arguments: {})
+        .then((result) {
+          for (final item in result.items) {
+            final docId = item.value['_id'] as String;
+            _seenPostIds.add(docId);
+          }
+          logger.i(
+            '👂 Loaded ${_seenPostIds.length} existing posts to skip notifications',
+          );
+        })
+        .catchError((e) {
+          logger.e('❌ Error loading existing posts: $e');
+        });
+
+    // Observe all posts
+    _postObserver = d.store.registerObserver(
+      'SELECT * FROM reals ORDER BY createdAt DESC',
+      arguments: {},
+    );
+
+    _postObserver?.changes.listen((result) async {
+      for (final item in result.items) {
+        final doc = item.value;
+        final postId = doc['_id'] as String;
+        final author = doc['author'] as String?;
+
+        // Skip if it's our own post or we've already notified about it
+        if (author == null ||
+            author == localPeerId ||
+            _seenPostIds.contains(postId)) {
+          continue;
+        }
+
+        // Check if this is a friend's post
+        final friendshipStatus = await getFriendshipStatusWith(author);
+
+        if (friendshipStatus == 'accepted') {
+          // Get author's display name
+          final authorName = await getDisplayNameForPeer(author);
+
+          // Show notification
+          try {
+            await NotificationService.instance.showNewPostNotification(
+              authorName: authorName,
+              authorId: author,
+            );
+            logger.i('🔔 Notified about post from $authorName');
+          } catch (e) {
+            logger.e('❌ Error showing notification: $e');
+          }
+        }
+
+        // Mark as seen regardless of friendship status
+        _seenPostIds.add(postId);
+      }
+    });
+
+    logger.i('👂 Started listening for new posts');
   }
 
   Future<void> _loadOwnProfileDisplayName() async {
@@ -597,6 +671,7 @@ class DittoService {
   }
 
   void dispose() {
+    _postObserver?.cancel();
     _ditto?.stopSync();
     _ditto?.close();
     _ditto = null;

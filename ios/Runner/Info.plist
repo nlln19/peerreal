@@ -58,6 +58,9 @@
 	<string>PeerReal needs microphone access for camera functionality</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>PeerReal needs access to save your photos</string>
+
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>PeerReal needs notification permissions to alert you when friends post new moments</string>
 	
 </dict>
 </plist>
