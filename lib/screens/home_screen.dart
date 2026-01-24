@@ -79,7 +79,7 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    final me = DittoService.instance.localPeerId;
+    final me = DittoService.instance.activeUserId;
 
     return Scaffold(
       backgroundColor: const Color(0xFF05050A),

@@ -1,6 +1,6 @@
+import 'package:PeerReal/auth_gate.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'screens/home_screen.dart';
 
 class PeerReal extends StatelessWidget {
   const PeerReal({super.key});
@@ -27,7 +27,7 @@ class PeerReal extends StatelessWidget {
       ),
 
       debugShowCheckedModeBanner: false,
-      home: const HomeScreen(),
+      home: const AuthGate()
     );
   }
 }

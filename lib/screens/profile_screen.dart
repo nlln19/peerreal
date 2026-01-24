@@ -24,7 +24,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadDisplayName() async {
     final service = DittoService.instance;
-    final name = await service.getDisplayNameForPeer(service.localPeerId);
+
+    // Prefer the session-cached name (no query needed)
+    final cached = service.displayName;
+    if (cached != null && cached.trim().isNotEmpty) {
+      if (!mounted) return;
+      setState(() => _displayName = cached.trim());
+      return;
+    }
+
+    final name = await service.getDisplayNameForPeer(service.activeUserId);
     if (!mounted) return;
     setState(() {
       _displayName = name;
@@ -178,7 +187,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   WHERE author = :me
                   ORDER BY createdAt DESC
                 ''',
-                queryArgs: {'me': DittoService.instance.localPeerId},
+                queryArgs: {'me': DittoService.instance.activeUserId},
                 builder: (context, result) {
                   final docs = result.items
                       .map((item) => Map<String, dynamic>.from(item.value))
@@ -221,7 +230,7 @@ class _ProfileStatsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final me = DittoService.instance.localPeerId;
+    final me = DittoService.instance.activeUserId;
 
     return DqlBuilderService(
       ditto: ditto,

@@ -8,11 +8,9 @@ import 'package:PeerReal/services/permission_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
-  // Initialize notification service
   await NotificationService.instance.init();
   await NotificationService.instance.requestPermissions();
 
-  // Initialize Ditto
   await DittoService.instance.init();
 
   await PermissionService.requestP2PPermissions();

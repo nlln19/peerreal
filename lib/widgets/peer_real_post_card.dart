@@ -37,7 +37,7 @@ class _PeerRealPostCardState extends State<PeerRealPostCard> {
     super.initState();
     _authorId = widget.doc['author'] as String? ?? '';
     _isMe =
-        _authorId.isNotEmpty && _authorId == DittoService.instance.localPeerId;
+        _authorId.isNotEmpty && _authorId == DittoService.instance.activeUserId;
 
     _loadAuthorName();
     _loadImage();

@@ -18,7 +18,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
   @override
   Widget build(BuildContext context) {
     final ditto = DittoService.instance.ditto;
-    final me = DittoService.instance.localPeerId;
+    final me = DittoService.instance.activeUserId;
 
     return Scaffold(
       backgroundColor: const Color(0xFF05050A),

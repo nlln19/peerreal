@@ -49,6 +49,8 @@ dependencies:
   camera: ^0.11.0+2
   logger: ^2.6.2
   shared_preferences: ^2.5.3
+  cryptography: ^2.9.0
+  cryptography_flutter: ^2.3.4
 
 
 dev_dependencies:
