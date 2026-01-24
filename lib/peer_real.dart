@@ -27,7 +27,7 @@ class PeerReal extends StatelessWidget {
       ),
 
       debugShowCheckedModeBanner: false,
-      home: const AuthGate()
+      home: const AuthGate(),
     );
   }
 }

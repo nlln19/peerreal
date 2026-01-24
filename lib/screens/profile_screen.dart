@@ -25,7 +25,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadDisplayName() async {
     final service = DittoService.instance;
 
-    // Prefer the session-cached name (no query needed)
     final cached = service.displayName;
     if (cached != null && cached.trim().isNotEmpty) {
       if (!mounted) return;

@@ -42,13 +42,10 @@ class DittoService {
   late final String localPeerId;
   bool _localPeerIdInitialized = false;
 
-  // Account/session
   String? _currentUserId; // = profiles.peerId (Account-Id)
   String? get currentUserId => _currentUserId;
   bool get isLoggedIn => _currentUserId != null;
 
-  /// Use this everywhere for authored content (posts/friends/etc.).
-  /// If logged out, falls back to device id.
   String get activeUserId => _currentUserId ?? localPeerId;
 
   String? _displayName;
@@ -60,7 +57,7 @@ class DittoService {
   StoreObserver? _postObserver;
   final Set<String> _seenPostIds = {};
 
-  // ---------------- Session ----------------
+  // ---------------- SESSION ----------------
 
   Future<void> loadSession() async {
     final prefs = await SharedPreferences.getInstance();
@@ -90,7 +87,7 @@ class DittoService {
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // last user merken (für Re-Login nach Logout / Repair-Fallback)
+    // save last user (for re-Login after Logout or as fallback)
     if (_currentUserId != null) {
       await prefs.setString('lastUserId', _currentUserId!);
     }
@@ -104,7 +101,6 @@ class DittoService {
     _currentUserId = null;
     _displayName = null;
 
-    // Cleanup: remove legacy device-only profile docs that were created by old code.
     final d = _ditto;
     if (d != null) {
       try {
@@ -116,12 +112,12 @@ class DittoService {
           arguments: {'id': localPeerId},
         );
       } catch (_) {
-        // Ignore (older DQL versions might not support IS NULL, etc.)
+        // Ignore
       }
     }
   }
 
-  // ---------------- Init ----------------
+  // ---------------- INIT ----------------
 
   Future<Ditto> init() async {
     if (_ditto != null) return _ditto!;
@@ -163,7 +159,7 @@ class DittoService {
 
     _ditto = ditto;
 
-    // Only load own displayName if logged in (prevents device-profile pollution).
+    // Only load own displayName if logged in
     if (isLoggedIn) {
       unawaited(_loadOwnProfileDisplayName());
     }
@@ -327,8 +323,6 @@ class DittoService {
     }
   }
 
-  /// IMPORTANT: This must not create new profiles with peerId == localPeerId (old bug source).
-  /// It only updates the logged-in user's profile displayName.
   Future<bool> setDisplayName(String displayName) async {
     final d = _ditto;
     if (d == null) return false;
@@ -354,8 +348,6 @@ class DittoService {
     return true;
   }
 
-  /// Ensures the logged-in account has a profile doc and updates its displayName.
-  /// (No more device profiles.)
   Future<void> ensureProfile({required String displayName}) async {
     final d = _ditto;
     if (d == null) return;
@@ -481,10 +473,6 @@ class DittoService {
     return Map<String, dynamic>.from(pw as Map);
   }
 
-  /// Robust lookup:
-  /// 1) Prefer profiles with password for the given name.
-  /// 2) If only "no password" docs exist for that name, ignore legacy device-docs (peerId==localPeerId).
-  /// 3) If still ambiguous, and the user just logged out, use lastUserId fallback (fixes the reported bug).
   Future<UserLookup?> lookupUserByDisplayName(String displayName) async {
     final d = _ditto;
     if (d == null) return null;
@@ -492,7 +480,7 @@ class DittoService {
     final name = displayName.trim();
     if (name.isEmpty) return null;
 
-    // 1) Prefer any profile with password for this displayName
+    // Prefer any profile with password for this displayName
     final withPw = await d.store.execute(
       '''
       SELECT _id, peerId, displayName FROM profiles
@@ -514,7 +502,7 @@ class DittoService {
       );
     }
 
-    // 2) Otherwise: get matches and skip legacy device-only docs
+    // Otherwise: get matches and skip legacy device-only docs
     final any = await d.store.execute(
       '''
       SELECT _id, peerId, displayName, password, createdAt FROM profiles
@@ -550,7 +538,7 @@ class DittoService {
       }
     }
 
-    // 3) Critical bug fix: after logout -> login with same user
+    // after logout -> login with same user
     if (bestNonDevice == null || !bestNonDevice.hasPassword) {
       final prefs = await SharedPreferences.getInstance();
       final lastUserId = prefs.getString('lastUserId');
@@ -653,16 +641,7 @@ class DittoService {
 
     await _saveSession(userId: hit.userId, displayName: hit.displayName);
   }
-
-  /// Change password for the currently logged in user.
-  /// Requires confirming the old password.
-  ///
-  /// Throws StateError with:
-  /// - NOT_LOGGED_IN
-  /// - DITTO_NOT_READY
-  /// - NO_PASSWORD_SET
-  /// - WRONG_PASSWORD
-  /// - WEAK_PASSWORD
+  
   Future<void> changePassword({
     required String oldPassword,
     required String newPassword,
@@ -699,7 +678,6 @@ class DittoService {
 
     final pw = await PasswordHasher.hashPassword(newPw);
 
-    // Update all password-bearing profile docs for this user (handles duplicates).
     await d.store.execute(
       '''
       UPDATE profiles

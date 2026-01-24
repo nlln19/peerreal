@@ -206,7 +206,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       },
     );
 
-    // Controller erst nach dem Pop-Frame disposen -> verhindert "used after disposed"
     WidgetsBinding.instance.addPostFrameCallback((_) {
       oldC.dispose();
       newC.dispose();
@@ -296,8 +295,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await DittoService.instance.logout();
     if (!mounted) return;
 
-    // Note: We reset the full navigation stack so the user cannot go back
-    // into authenticated screens after logout.
     Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const AuthGate()),
       (route) => false,
@@ -350,7 +347,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const Divider(color: Colors.white12),
 
-          // Delete account
+          // Logout
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.white),
             title: const Text('Logout', style: TextStyle(color: Colors.white)),

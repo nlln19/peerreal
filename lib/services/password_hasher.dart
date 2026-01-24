@@ -21,7 +21,10 @@ class PasswordHasher {
       bits: _bits,
     );
 
-    final key = await kdf.deriveKeyFromPassword(password: password, nonce: salt);
+    final key = await kdf.deriveKeyFromPassword(
+      password: password,
+      nonce: salt,
+    );
     final bytes = await key.extractBytes();
 
     return {
@@ -47,7 +50,10 @@ class PasswordHasher {
       bits: bits,
     );
 
-    final key = await kdf.deriveKeyFromPassword(password: password, nonce: salt);
+    final key = await kdf.deriveKeyFromPassword(
+      password: password,
+      nonce: salt,
+    );
     final bytes = await key.extractBytes();
 
     final expected = base64Url.decode(stored['hashB64'] as String);
