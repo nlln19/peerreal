@@ -290,23 +290,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ],
             ),
-
-            const SizedBox(height: 16),
-
-            // Change Nickname Button
-            OutlinedButton.icon(
-              onPressed: () => _pickDisplayName(context),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white,
-                side: const BorderSide(color: Colors.white24),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-              icon: const Icon(Icons.edit, size: 18),
-              label: const Text('Change nickname'),
-            ),
-
+            
             const SizedBox(height: 24),
 
             _ProfileStatsRow(),
