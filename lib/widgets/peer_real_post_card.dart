@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:PeerReal/screens/friend_profile_screen.dart';
 import 'package:PeerReal/screens/profile_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:ditto_live/ditto_live.dart';
 import 'package:PeerReal/services/ditto_service.dart';
 import '../services/logger_service.dart';
 
@@ -25,6 +27,11 @@ class _PeerRealPostCardState extends State<PeerRealPostCard> {
   Uint8List? _imageData;
   Uint8List? _selfieData;
 
+  // Synced author avatar (Ditto attachment)
+  Uint8List? _authorAvatarBytes;
+  StoreObserver? _profileObserver;
+  StreamSubscription? _profileObserverSub;
+
   late final String _authorId;
   late final bool _isMe;
   String? _authorName;
@@ -40,6 +47,8 @@ class _PeerRealPostCardState extends State<PeerRealPostCard> {
         _authorId.isNotEmpty && _authorId == DittoService.instance.activeUserId;
 
     _loadAuthorName();
+    _loadAuthorAvatar();
+    _startAvatarObserver();
     _loadImage();
   }
 
@@ -53,6 +62,37 @@ class _PeerRealPostCardState extends State<PeerRealPostCard> {
       });
     } catch (e) {
       logger.e('❌ Error loading author name: $e');
+    }
+  }
+
+  Future<void> _loadAuthorAvatar() async {
+    if (_authorId.isEmpty) return;
+    try {
+      final bytes = await DittoService.instance.getAvatarBytesForPeer(_authorId);
+      if (!mounted) return;
+      setState(() {
+        _authorAvatarBytes = bytes;
+      });
+    } catch (e) {
+      logger.e('❌ Error loading author avatar: $e');
+    }
+  }
+
+  void _startAvatarObserver() {
+    if (_authorId.isEmpty) return;
+
+    try {
+      _profileObserver = DittoService.instance.ditto.store.registerObserver(
+        'SELECT avatar, avatarUpdatedAt, createdAt FROM profiles WHERE peerId = :id ORDER BY createdAt DESC',
+        arguments: {'id': _authorId},
+      );
+
+      _profileObserverSub = _profileObserver?.changes.listen((_) {
+        // Refresh cached avatar if the token changed.
+        _loadAuthorAvatar();
+      });
+    } catch (e) {
+      logger.e('❌ Error starting avatar observer: $e');
     }
   }
 
@@ -105,6 +145,13 @@ class _PeerRealPostCardState extends State<PeerRealPostCard> {
   }
 
   @override
+  void dispose() {
+    _profileObserverSub?.cancel();
+    _profileObserver?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final createdAtMs = widget.doc['createdAt'] as int?;
     final createdAt = createdAtMs != null
@@ -136,10 +183,19 @@ class _PeerRealPostCardState extends State<PeerRealPostCard> {
               onTap: _openProfile,
               child: Row(
                 children: [
-                  const CircleAvatar(
+                  CircleAvatar(
                     radius: 16,
                     backgroundColor: Colors.white12,
-                    child: Icon(Icons.person, size: 18, color: Colors.white70),
+                    backgroundImage: _authorAvatarBytes != null
+                        ? MemoryImage(_authorAvatarBytes!)
+                        : null,
+                    child: _authorAvatarBytes == null
+                        ? const Icon(
+                            Icons.person,
+                            size: 18,
+                            color: Colors.white70,
+                          )
+                        : null,
                   ),
                   const SizedBox(width: 8),
                   Text(

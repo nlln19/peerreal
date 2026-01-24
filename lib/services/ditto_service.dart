@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:PeerReal/services/password_hasher.dart';
 import 'package:ditto_live/ditto_live.dart';
@@ -23,6 +24,12 @@ class UserLookup {
     required this.displayName,
     required this.hasPassword,
   });
+}
+
+class _AvatarCacheEntry {
+  final String tokenId;
+  final Uint8List bytes;
+  const _AvatarCacheEntry(this.tokenId, this.bytes);
 }
 
 class DittoService {
@@ -55,6 +62,7 @@ class DittoService {
   String? get displayName => _displayName;
 
   final Map<String, String> _profileNameCache = {}; // peerId -> displayName
+  final Map<String, _AvatarCacheEntry> _avatarCache = {}; // peerId -> avatar cache
 
   // Notification tracking
   StoreObserver? _postObserver;
@@ -460,6 +468,109 @@ class DittoService {
       return peerId;
     }
   }
+
+  // ---------------- PROFILE AVATAR ----------------
+
+  /// Uploads and syncs the current user's profile avatar using a Ditto ATTACHMENT
+  /// stored on the user's `profiles` document under the `avatar` field.
+  ///
+  /// Requires a logged-in user (i.e., `_currentUserId != null`).
+  Future<void> setCurrentUserAvatar(Uint8List avatarBytes) async {
+    final d = _ditto;
+    if (d == null) {
+      throw StateError('DittoService not initialized. Call init() first.');
+    }
+    final userId = _currentUserId;
+    if (userId == null) {
+      throw StateError('Not logged in');
+    }
+
+    final now = DateTime.now().millisecondsSinceEpoch;
+
+    // Create attachment (store bytes in Ditto blob store, replicate token in document)
+    final metadata = AttachmentMetadata({
+      'name': 'avatar_$now.jpg',
+      'mime_type': 'image/jpeg',
+      'purpose': 'profile_avatar',
+    });
+    final attachment = await d.store.newAttachment(avatarBytes, metadata);
+
+    // Update existing primary profile doc, or create one if missing.
+    final docId = await _primaryProfileDocIdForUser(userId);
+    if (docId == null) {
+      await d.store.execute(
+        '''
+        INSERT INTO COLLECTION profiles (avatar ATTACHMENT)
+        DOCUMENTS (:doc)
+        ''',
+        arguments: {
+          'doc': {
+            '_id': userId,
+            'peerId': userId,
+            'displayName': _displayName ?? userId,
+            'createdAt': now,
+            'avatar': attachment,
+            'avatarUpdatedAt': now,
+          }
+        },
+      );
+    } else {
+      await d.store.execute(
+        '''
+        UPDATE COLLECTION profiles (avatar ATTACHMENT)
+        SET avatar = :avatar, avatarUpdatedAt = :ts
+        WHERE _id = :id
+        ''',
+        arguments: {'avatar': attachment, 'ts': now, 'id': docId},
+      );
+    }
+
+    // Bust cache for this user so UI fetches the new one.
+    _avatarCache.remove(userId);
+  }
+
+  /// Fetches (and lazily downloads) a peer's current avatar bytes from Ditto.
+  /// Returns null if the peer has no avatar set.
+  Future<Uint8List?> getAvatarBytesForPeer(String peerId) async {
+    final d = _ditto;
+    if (d == null) return null;
+
+    try {
+      final res = await d.store.execute(
+        '''
+        SELECT avatar FROM profiles
+        WHERE peerId = :id
+        ORDER BY createdAt DESC
+        LIMIT 1
+        ''',
+        arguments: {'id': peerId},
+      );
+
+      if (res.items.isEmpty) return null;
+
+      final any = res.items.first.value['avatar'];
+      if (any == null || any is! Map) return null;
+
+      final token = Map<String, dynamic>.from(any as Map);
+      final tokenId = token['id'] as String?;
+      if (tokenId == null || tokenId.isEmpty) return null;
+
+      final cached = _avatarCache[peerId];
+      if (cached != null && cached.tokenId == tokenId) {
+        return cached.bytes;
+      }
+
+      final bytes = await _loadAttachmentFromToken(token);
+      if (bytes == null) return null;
+
+      _avatarCache[peerId] = _AvatarCacheEntry(tokenId, bytes);
+      return bytes;
+    } catch (e) {
+      logger.e('❌ Error in getAvatarBytesForPeer: $e');
+      return null;
+    }
+  }
+
 
   Future<String> getValueOfMoments(String peerId) async {
     return '0';

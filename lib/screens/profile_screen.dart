@@ -2,7 +2,13 @@ import 'package:PeerReal/screens/settings_screen.dart';
 import 'package:PeerReal/services/dql_builder_service.dart';
 import 'package:PeerReal/widgets/peer_real_post_card.dart';
 import 'package:ditto_live/ditto_live.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'dart:typed_data';
+
+import 'package:image_picker/image_picker.dart';
+
+import '../services/profile_avatar_service.dart';
 import 'package:PeerReal/services/ditto_service.dart';
 import '../services/logger_service.dart';
 
@@ -16,10 +22,26 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   String? _displayName;
 
+  Uint8List? _avatarBytes;
+  final ImagePicker _imagePicker = ImagePicker();
+
+  StoreObserver? _avatarObserver;
+  StreamSubscription<QueryResult>? _avatarSub;
+
   @override
   void initState() {
     super.initState();
     _loadDisplayName();
+    _loadAvatar();
+    _startAvatarObserver();
+  }
+
+
+  @override
+  void dispose() {
+    _avatarSub?.cancel();
+    _avatarObserver?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadDisplayName() async {
@@ -37,6 +59,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() {
       _displayName = name;
     });
+  }
+
+  Future<void> _loadAvatar() async {
+    final service = DittoService.instance;
+    final me = service.activeUserId;
+
+    Uint8List? bytes;
+    if (service.isLoggedIn) {
+      bytes = await service.getAvatarBytesForPeer(me);
+      if (bytes != null) {
+        await ProfileAvatarService.saveForPeer(me, bytes);
+      }
+    }
+
+    bytes ??= await ProfileAvatarService.loadForPeer(me);
+
+    if (!mounted) return;
+    setState(() => _avatarBytes = bytes);
+  }
+
+  Future<void> _pickAvatar() async {
+    final me = DittoService.instance.activeUserId;
+
+    final XFile? picked = await _imagePicker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 512,
+      maxHeight: 512,
+      imageQuality: 85,
+    );
+
+    if (picked == null) return;
+
+    final bytes = await picked.readAsBytes();
+    await ProfileAvatarService.saveForPeer(me, bytes);
+
+    try {
+      if (DittoService.instance.isLoggedIn) {
+        await DittoService.instance.setCurrentUserAvatar(bytes);
+      }
+    } catch (e) {
+      logger.e('❌ Failed to sync avatar: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Avatar could not be synced')),
+        );
+      }
+    }
+
+    if (!mounted) return;
+    setState(() => _avatarBytes = bytes);
   }
 
   Future<void> _pickDisplayName(BuildContext context) async {
@@ -85,6 +157,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+
+  void _startAvatarObserver() {
+    final service = DittoService.instance;
+    if (!service.isLoggedIn) return;
+
+    final me = service.activeUserId;
+
+    try {
+      final obs = service.ditto.store.registerObserver(
+        '''
+        SELECT avatar FROM profiles
+        WHERE peerId = :id
+        ORDER BY createdAt DESC
+        LIMIT 1
+        ''',
+        arguments: {'id': me},
+      );
+
+      _avatarObserver = obs;
+      _avatarSub = obs.changes.listen((_) async {
+        final bytes = await service.getAvatarBytesForPeer(me);
+        if (bytes != null) {
+          await ProfileAvatarService.saveForPeer(me, bytes);
+        }
+        if (!mounted) return;
+        setState(() => _avatarBytes = bytes);
+      });
+    } catch (e) {
+      logger.e('❌ Failed to start avatar observer: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final name = _displayName;
@@ -116,11 +220,48 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // Avatar + Name
             Row(
               children: [
-                const CircleAvatar(
-                  radius: 32,
-                  backgroundColor: Colors.white12,
-                  child: Icon(Icons.person, size: 32, color: Colors.white70),
+
+                Stack(
+                  children: [
+                    InkWell(
+                      onTap: _pickAvatar,
+                      borderRadius: BorderRadius.circular(40),
+                      child: CircleAvatar(
+                        radius: 32,
+                        backgroundColor: Colors.white12,
+                        backgroundImage: _avatarBytes != null
+                            ? MemoryImage(_avatarBytes!)
+                            : null,
+                        child: _avatarBytes == null
+                            ? const Icon(
+                                Icons.person,
+                                size: 32,
+                                color: Colors.white70,
+                              )
+                            : null,
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        width: 22,
+                        height: 22,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0C0C15),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white24),
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt,
+                          size: 14,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
+
                 const SizedBox(width: 16),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

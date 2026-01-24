@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:ditto_live/ditto_live.dart';
 import 'package:flutter/cupertino.dart';
 import 'dart:typed_data';
@@ -6,6 +7,7 @@ import '../widgets/next_post_timer.dart';
 import 'package:flutter/material.dart';
 import '../services/dql_builder_service.dart';
 import '../services/ditto_service.dart';
+import '../services/profile_avatar_service.dart';
 import '../services/permission_service.dart';
 import '../screens/camera_screen.dart';
 import '../widgets/peer_real_post_card.dart';
@@ -25,6 +27,10 @@ class _HomeScreenState extends State<HomeScreen> {
   final ScrollController _scrollController = ScrollController();
   int _feedFilter = 0; // 0 = All, 1 = Friends
   String? _currentWindowId;
+  Uint8List? _profileAvatarBytes;
+
+  StoreObserver? _avatarObserver;
+  StreamSubscription<QueryResult>? _avatarSub;
 
   @override
   void initState() {
@@ -36,11 +42,63 @@ class _HomeScreenState extends State<HomeScreen> {
     await PermissionService.requestP2PPermissions();
     final ditto = await DittoService.instance.init();
     final windowId = await DittoService.instance.getCurrentDailyWindowId();
+    final avatar = await _loadMyAvatar();
+
     if (!mounted) return;
     setState(() {
       _ditto = ditto;
       _currentWindowId = windowId;
+      _profileAvatarBytes = avatar;
     });
+    _startAvatarObserver();
+  }
+
+
+  Future<Uint8List?> _loadMyAvatar() async {
+    final service = DittoService.instance;
+    final me = service.activeUserId;
+
+    Uint8List? bytes;
+    if (service.isLoggedIn) {
+      bytes = await service.getAvatarBytesForPeer(me);
+      if (bytes != null) {
+        await ProfileAvatarService.saveForPeer(me, bytes);
+      }
+    }
+
+    bytes ??= await ProfileAvatarService.loadForPeer(me);
+    return bytes;
+  }
+
+  void _startAvatarObserver() {
+    final service = DittoService.instance;
+    if (!service.isLoggedIn) return;
+
+    final me = service.activeUserId;
+
+    try {
+      final obs = service.ditto.store.registerObserver(
+        '''
+        SELECT avatar FROM profiles
+        WHERE peerId = :id
+        ORDER BY createdAt DESC
+        LIMIT 1
+        ''',
+        arguments: {'id': me},
+      );
+
+      _avatarObserver = obs;
+      _avatarSub = obs.changes.listen((_) async {
+        final bytes = await service.getAvatarBytesForPeer(me);
+        if (bytes != null) {
+          await ProfileAvatarService.saveForPeer(me, bytes);
+        }
+        if (!mounted) return;
+        setState(() => _profileAvatarBytes = bytes);
+      });
+    } catch (e) {
+      logger.e('❌ Failed to start avatar observer: $e');
+    }
   }
 
   Future<void> _openCamera() async {
@@ -62,6 +120,36 @@ class _HomeScreenState extends State<HomeScreen> {
     } else if (result is Uint8List) {
       await DittoService.instance.addImageFromBytes(result);
     }
+  }
+
+  Future<void> _openProfile() async {
+    logger.i('👤 Profile tapped');
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ProfileScreen()),
+    );
+
+    final avatar = await _loadMyAvatar();
+    if (!mounted) return;
+    setState(() => _profileAvatarBytes = avatar);
+  }
+
+  Widget _profileNavIcon(bool selected) {
+    final borderColor = selected ? Colors.white : Colors.white54;
+
+    return Container(
+      width: 24,
+      height: 24,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: borderColor, width: 1.2),
+      ),
+      child: ClipOval(
+        child: _profileAvatarBytes != null
+            ? Image.memory(_profileAvatarBytes!, fit: BoxFit.cover)
+            : Icon(Icons.person_outline, size: 16, color: borderColor),
+      ),
+    );
   }
 
   Color _segmentTextColor(int value) {
@@ -144,16 +232,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(width: 40),
               _BottomNavItem(
-                icon: Icons.person_outline,
+                iconWidget: _profileNavIcon(false),
                 label: 'Profile',
                 selected: false,
-                onTap: () {
-                  logger.i('👤 Profile tapped');
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                  );
-                },
+                onTap: _openProfile,
               ),
             ],
           ),
@@ -316,17 +398,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
 // Widget for Bottom-Navigation-Items (Helper class)
 class _BottomNavItem extends StatelessWidget {
-  final IconData icon;
+  final IconData? icon;
+  final Widget? iconWidget;
   final String label;
   final bool selected;
   final VoidCallback? onTap;
 
   const _BottomNavItem({
-    required this.icon,
+    this.icon,
+    this.iconWidget,
     required this.label,
     required this.selected,
     this.onTap,
-  });
+  }) : assert(icon != null || iconWidget != null);
 
   @override
   Widget build(BuildContext context) {
@@ -341,7 +425,7 @@ class _BottomNavItem extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 22),
+            iconWidget ?? Icon(icon!, color: color, size: 22),
             const SizedBox(height: 2),
             Text(
               label,
