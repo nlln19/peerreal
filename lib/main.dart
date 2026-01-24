@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'peer_real.dart';
 import 'package:PeerReal/services/notification_service.dart';
@@ -23,6 +24,11 @@ Future<void> main() async {
 
   // Check if we should start a new daily window
   await DailyWindowService.instance.checkAndStartNewWindowIfNeeded();
+
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown
+  ]);
 
   await PermissionService.requestP2PPermissions();
 

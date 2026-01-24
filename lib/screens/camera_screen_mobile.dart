@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../services/logger_service.dart';
 
 class MobileCameraScreen extends StatefulWidget {
@@ -107,6 +108,16 @@ class _MobileCameraScreenState extends State<MobileCameraScreen> {
     });
 
     await initializeFuture;
+    await initializeFuture;
+
+  // Fixiert Kamera ausrichtung
+  try {
+    await controller.lockCaptureOrientation(DeviceOrientation.portraitUp);
+  } catch (e) {
+    logger.e('❌ lockCaptureOrientation failed: $e');
+  }
+
+    
 
     // Zoom
     try {
