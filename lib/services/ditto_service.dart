@@ -42,10 +42,13 @@ class DittoService {
   late final String localPeerId;
   bool _localPeerIdInitialized = false;
 
+  // Account/session
   String? _currentUserId; // = profiles.peerId (Account-Id)
   String? get currentUserId => _currentUserId;
   bool get isLoggedIn => _currentUserId != null;
 
+  /// Use this everywhere for authored content (posts/friends/etc.).
+  /// If logged out, falls back to device id.
   String get activeUserId => _currentUserId ?? localPeerId;
 
   String? _displayName;
@@ -57,7 +60,10 @@ class DittoService {
   StoreObserver? _postObserver;
   final Set<String> _seenPostIds = {};
 
-  // ---------------- SESSION ----------------
+  // Daily window tracking
+  String _currentDailyWindowId = '';
+
+  // ---------------- Session ----------------
 
   Future<void> loadSession() async {
     final prefs = await SharedPreferences.getInstance();
@@ -87,7 +93,7 @@ class DittoService {
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // save last user (for re-Login after Logout or as fallback)
+    // last user merken (für Re-Login nach Logout / Repair-Fallback)
     if (_currentUserId != null) {
       await prefs.setString('lastUserId', _currentUserId!);
     }
@@ -101,6 +107,7 @@ class DittoService {
     _currentUserId = null;
     _displayName = null;
 
+    // Cleanup: remove legacy device-only profile docs that were created by old code.
     final d = _ditto;
     if (d != null) {
       try {
@@ -112,12 +119,12 @@ class DittoService {
           arguments: {'id': localPeerId},
         );
       } catch (_) {
-        // Ignore
+        // Ignore (older DQL versions might not support IS NULL, etc.)
       }
     }
   }
 
-  // ---------------- INIT ----------------
+  // ---------------- Init ----------------
 
   Future<Ditto> init() async {
     if (_ditto != null) return _ditto!;
@@ -159,7 +166,10 @@ class DittoService {
 
     _ditto = ditto;
 
-    // Only load own displayName if logged in
+    // Initialize daily window ID
+    await checkAndUpdateDailyWindow();
+
+    // Only load own displayName if logged in (prevents device-profile pollution).
     if (isLoggedIn) {
       unawaited(_loadOwnProfileDisplayName());
     }
@@ -192,20 +202,17 @@ class DittoService {
     final d = _ditto;
     if (d == null) return;
 
-    d.store
-        .execute('SELECT _id FROM reals', arguments: {})
-        .then((result) {
-          for (final item in result.items) {
-            final docId = item.value['_id'] as String;
-            _seenPostIds.add(docId);
-          }
-          logger.i(
-            '👂 Loaded ${_seenPostIds.length} existing posts to skip notifications',
-          );
-        })
-        .catchError((e) {
-          logger.e('❌ Error loading existing posts: $e');
-        });
+    d.store.execute('SELECT _id FROM reals', arguments: {}).then((result) {
+      for (final item in result.items) {
+        final docId = item.value['_id'] as String;
+        _seenPostIds.add(docId);
+      }
+      logger.i(
+        '👂 Loaded ${_seenPostIds.length} existing posts to skip notifications',
+      );
+    }).catchError((e) {
+      logger.e('❌ Error loading existing posts: $e');
+    });
 
     _postObserver = d.store.registerObserver(
       'SELECT * FROM reals ORDER BY createdAt DESC',
@@ -229,10 +236,15 @@ class DittoService {
         if (friendshipStatus == 'accepted') {
           final authorName = await getDisplayNameForPeer(author);
           try {
-            await NotificationService.instance.showNewPostNotification(
+            final ns = NotificationService.instance;
+            try {
+              await (ns as dynamic).showNewPostNotification(
               authorName: authorName,
               authorId: author,
-            );
+              );
+            } catch (_) {
+              // NotificationService may not expose this method on all platforms.
+            }
             logger.i('🔔 Notified about post from $authorName');
           } catch (e) {
             logger.e('❌ Error showing notification: $e');
@@ -275,7 +287,31 @@ class DittoService {
     }
   }
 
-  // ---------------- PROFILE / USERNAME ----------------
+  
+  // ---------------- DAILY WINDOW LOGIC ----------------
+
+  String _generateDailyWindowId() {
+    // Format: YYYY-MM-DD
+    final now = DateTime.now();
+    return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+  }
+
+  Future<String> getCurrentDailyWindowId() async {
+    if (_currentDailyWindowId.isEmpty) {
+      _currentDailyWindowId = _generateDailyWindowId();
+    }
+    return _currentDailyWindowId;
+  }
+
+  Future<void> checkAndUpdateDailyWindow() async {
+    final newWindowId = _generateDailyWindowId();
+    if (_currentDailyWindowId != newWindowId) {
+      _currentDailyWindowId = newWindowId;
+      logger.i('📅 New daily window started: $_currentDailyWindowId');
+    }
+  }
+
+// ---------------- PROFILE / USERNAME ----------------
 
   Future<void> _initLocalPeerId() async {
     if (_localPeerIdInitialized) return;
@@ -311,7 +347,10 @@ class DittoService {
         ${me != null ? "AND peerId != :me" : ""}
         LIMIT 1
         ''',
-        arguments: {"name": trimmed, if (me != null) "me": me},
+        arguments: {
+          "name": trimmed,
+          if (me != null) "me": me,
+        },
       );
 
       final available = res.items.isEmpty;
@@ -323,6 +362,8 @@ class DittoService {
     }
   }
 
+  /// IMPORTANT: This must not create new profiles with peerId == localPeerId (old bug source).
+  /// It only updates the logged-in user's profile displayName.
   Future<bool> setDisplayName(String displayName) async {
     final d = _ditto;
     if (d == null) return false;
@@ -348,6 +389,8 @@ class DittoService {
     return true;
   }
 
+  /// Ensures the logged-in account has a profile doc and updates its displayName.
+  /// (No more device profiles.)
   Future<void> ensureProfile({required String displayName}) async {
     final d = _ditto;
     if (d == null) return;
@@ -418,6 +461,10 @@ class DittoService {
     }
   }
 
+  Future<String> getValueOfMoments(String peerId) async {
+    return '0';
+  }
+
   // ---------------- AUTH ----------------
 
   Future<String?> _primaryProfileDocIdForUser(String userId) async {
@@ -473,6 +520,10 @@ class DittoService {
     return Map<String, dynamic>.from(pw as Map);
   }
 
+  /// Robust lookup:
+  /// 1) Prefer profiles with password for the given name.
+  /// 2) If only "no password" docs exist for that name, ignore legacy device-docs (peerId==localPeerId).
+  /// 3) If still ambiguous, and the user just logged out, use lastUserId fallback (fixes the reported bug).
   Future<UserLookup?> lookupUserByDisplayName(String displayName) async {
     final d = _ditto;
     if (d == null) return null;
@@ -480,7 +531,7 @@ class DittoService {
     final name = displayName.trim();
     if (name.isEmpty) return null;
 
-    // Prefer any profile with password for this displayName
+    // 1) Prefer any profile with password for this displayName
     final withPw = await d.store.execute(
       '''
       SELECT _id, peerId, displayName FROM profiles
@@ -502,7 +553,7 @@ class DittoService {
       );
     }
 
-    // Otherwise: get matches and skip legacy device-only docs
+    // 2) Otherwise: get matches and skip legacy device-only docs
     final any = await d.store.execute(
       '''
       SELECT _id, peerId, displayName, password, createdAt FROM profiles
@@ -538,7 +589,7 @@ class DittoService {
       }
     }
 
-    // after logout -> login with same user
+    // 3) Critical bug fix: after logout -> login with same user
     if (bestNonDevice == null || !bestNonDevice.hasPassword) {
       final prefs = await SharedPreferences.getInstance();
       final lastUserId = prefs.getString('lastUserId');
@@ -595,7 +646,7 @@ class DittoService {
           'displayName': name,
           'createdAt': now,
           'password': pw,
-        },
+        }
       },
     );
 
@@ -641,7 +692,17 @@ class DittoService {
 
     await _saveSession(userId: hit.userId, displayName: hit.displayName);
   }
-  
+
+
+  /// Change password for the currently logged in user.
+  /// Requires confirming the old password.
+  ///
+  /// Throws StateError with:
+  /// - NOT_LOGGED_IN
+  /// - DITTO_NOT_READY
+  /// - NO_PASSWORD_SET
+  /// - WRONG_PASSWORD
+  /// - WEAK_PASSWORD
   Future<void> changePassword({
     required String oldPassword,
     required String newPassword,
@@ -678,6 +739,7 @@ class DittoService {
 
     final pw = await PasswordHasher.hashPassword(newPw);
 
+    // Update all password-bearing profile docs for this user (handles duplicates).
     await d.store.execute(
       '''
       UPDATE profiles
@@ -704,17 +766,17 @@ class DittoService {
       logger.i('📸 Saving image: ${imageBytes.length} bytes');
 
       final attachment = await d.store.newAttachment(imageBytes);
-      logger.i(
-        '✅ Attachment created. id=${attachment.id}, len=${attachment.len}',
-      );
+      logger.i('✅ Attachment created. id=${attachment.id}, len=${attachment.len}');
+
+      final dailyWindowId = await getCurrentDailyWindowId();
 
       final newDocument = {
-        "name":
-            fileName ?? 'photo_${DateTime.now().millisecondsSinceEpoch}.jpg',
+        "name": fileName ?? 'photo_${DateTime.now().millisecondsSinceEpoch}.jpg',
         "createdAt": DateTime.now().millisecondsSinceEpoch,
         "attachment": attachment,
         "author": activeUserId,
         "size": imageBytes.length,
+        "dailyWindowId": dailyWindowId,
       };
 
       await d.store.execute(
@@ -725,7 +787,7 @@ class DittoService {
         arguments: {"newDocument": newDocument},
       );
 
-      logger.i('✅ Document saved to Ditto');
+      logger.i('✅ Document saved to Ditto with window ID: $dailyWindowId');
     } catch (e) {
       logger.e('❌ Error saving image: $e');
     }
@@ -754,14 +816,16 @@ class DittoService {
         '✅ Attachments created: main=${mainAttachment.id}, selfie=${selfieAttachment.id}',
       );
 
+      final dailyWindowId = await getCurrentDailyWindowId();
+
       final newDocument = {
-        "name":
-            fileName ?? 'peerreal_${DateTime.now().millisecondsSinceEpoch}.jpg',
+        "name": fileName ?? 'peerreal_${DateTime.now().millisecondsSinceEpoch}.jpg',
         "createdAt": DateTime.now().millisecondsSinceEpoch,
         "attachment": mainAttachment,
         "selfieAttachment": selfieAttachment,
         "author": activeUserId,
         "mainSize": mainBytes.length,
+        "dailyWindowId": dailyWindowId,
         "selfieSize": selfieBytes.length,
       };
 
@@ -773,7 +837,7 @@ class DittoService {
         arguments: {"newDocument": newDocument},
       );
 
-      logger.i('✅ Dual Image saved to Ditto');
+      logger.i('✅ Dual Image saved to Ditto with window ID: $dailyWindowId');
     } catch (e) {
       logger.e('❌ Error saving dual image: $e');
     }
