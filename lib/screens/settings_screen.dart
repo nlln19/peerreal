@@ -1,7 +1,6 @@
+import 'package:PeerReal/auth_gate.dart';
 import 'package:flutter/material.dart';
 import 'package:PeerReal/services/ditto_service.dart';
-
-enum AppThemeMode { dark, light }
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -80,7 +79,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: const Text('Cancel'),
             ),
             TextButton(
-              onPressed: () => Navigator.pop(context, true),
+              onPressed: () => {Navigator.pop(context, true)},
               style: TextButton.styleFrom(foregroundColor: Colors.red),
               child: const Text('Delete'),
             ),
@@ -103,8 +102,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (ok) {
-      Navigator.of(context).pop(); // Close Settings
+      await DittoService.instance.deleteAccountAndData();
+      if (!mounted) return;
+
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const AuthGate()),
+        (route) => false,
+      );
     }
+  }
+
+  Future<void> _confirmLogout() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Logout'),
+          content: const Text(
+            'You will logout of this device.\n\n'
+            'Are you sure?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Logout'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true) return;
+
+    await DittoService.instance.logout();
+    if (!mounted) return;
+
+    // Clear the navigation stack and go back to the auth flow.
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const AuthGate()),
+      (route) => false,
+    );
   }
 
   @override
@@ -136,6 +178,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
             trailing: const Icon(Icons.edit, color: Colors.white70),
             onTap: _changeDisplayName,
           ),
+
+          const Divider(color: Colors.white12),
+
+          // Delete account
+          ListTile(
+            leading: const Icon(Icons.logout, color: Colors.white),
+            title: const Text('Logout', style: TextStyle(color: Colors.white)),
+            subtitle: const Text(
+              'Logout from this device',
+              style: TextStyle(color: Colors.white54, fontSize: 12),
+            ),
+            onTap: _confirmLogout,
+          ),
+
           const Divider(color: Colors.white12),
 
           // Delete account
