@@ -1,6 +1,10 @@
+import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:PeerReal/screens/friend_profile_screen.dart';
-import 'package:flutter/material.dart';
 import 'package:ditto_live/ditto_live.dart';
+import 'package:flutter/material.dart';
+
 import '../services/dql_builder_service.dart';
 import '../services/ditto_service.dart';
 
@@ -14,6 +18,37 @@ class FriendsScreen extends StatefulWidget {
 class _FriendsScreenState extends State<FriendsScreen> {
   int _tabIndex = 0; // 0 = Friends, 1 = Requests
   String _searchTerm = '';
+
+  StoreObserver? _profilesObserver;
+  StreamSubscription? _profilesObserverSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _startProfilesObserver();
+  }
+
+  void _startProfilesObserver() {
+    // Rebuild list tiles when profiles change (avatar updates, displayName changes, etc.)
+    try {
+      _profilesObserver = DittoService.instance.ditto.store.registerObserver(
+        'SELECT peerId, avatar, avatarUpdatedAt, createdAt FROM profiles',
+      );
+
+      _profilesObserverSub = _profilesObserver?.changes.listen((_) {
+        if (mounted) setState(() {});
+      });
+    } catch (_) {
+      // Ignore (e.g., ditto not initialized yet)
+    }
+  }
+
+  @override
+  void dispose() {
+    _profilesObserverSub?.cancel();
+    _profilesObserver?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +65,6 @@ class _FriendsScreenState extends State<FriendsScreen> {
       body: Column(
         children: [
           const SizedBox(height: 8),
-
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -47,9 +81,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 16),
-
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: TextField(
@@ -75,14 +107,12 @@ class _FriendsScreenState extends State<FriendsScreen> {
               },
             ),
           ),
-
           const SizedBox(height: 12),
-
           Expanded(
             child: _tabIndex == 0
                 ? (_searchTerm.isEmpty
-                      ? _buildFriendsList(ditto, me)
-                      : _buildProfileSearchResults(ditto, me))
+                    ? _buildFriendsList(ditto, me)
+                    : _buildProfileSearchResults(ditto, me))
                 : _buildRequestsList(ditto, me),
           ),
         ],
@@ -135,10 +165,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                 final displayName = snap.data ?? otherId;
 
                 return ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: Colors.white12,
-                    child: Icon(Icons.person, color: Colors.white70),
-                  ),
+                  leading: _PeerAvatar(peerId: otherId),
                   title: Text(
                     displayName,
                     style: const TextStyle(color: Colors.white),
@@ -214,7 +241,6 @@ class _FriendsScreenState extends State<FriendsScreen> {
                 final status = snap.data;
 
                 Widget trailing;
-                VoidCallback? onPressed;
 
                 if (status == null) {
                   trailing = const SizedBox(
@@ -244,26 +270,25 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     ),
                   );
                 } else {
-                  trailing = const Icon(
-                    Icons.person_add_alt_1,
-                    color: Colors.greenAccent,
+                  trailing = IconButton(
+                    icon: const Icon(
+                      Icons.person_add_alt_1,
+                      color: Colors.greenAccent,
+                    ),
+                    onPressed: () async {
+                      await DittoService.instance.sendFriendRequest(peerId);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Friend request sent to $name')),
+                        );
+                      }
+                      if (mounted) setState(() {});
+                    },
                   );
-                  onPressed = () async {
-                    await DittoService.instance.sendFriendRequest(peerId);
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Friend request sent to $name')),
-                      );
-                    }
-                    setState(() {});
-                  };
                 }
 
                 return ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: Colors.white12,
-                    child: Icon(Icons.person, color: Colors.white70),
-                  ),
+                  leading: _PeerAvatar(peerId: peerId),
                   title: Text(
                     name,
                     style: const TextStyle(color: Colors.white),
@@ -272,12 +297,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     peerId,
                     style: const TextStyle(color: Colors.white24, fontSize: 11),
                   ),
-                  trailing: IconButton(
-                    icon: trailing is Icon
-                        ? trailing
-                        : const Icon(Icons.person),
-                    onPressed: onPressed,
-                  ),
+                  trailing: trailing,
                   onTap: () {
                     Navigator.push(
                       context,
@@ -308,7 +328,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
     ''',
       queryArgs: {'me': me},
       builder: (context, result) {
-        var requests = result.items
+        final requests = result.items
             .map((item) => Map<String, dynamic>.from(item.value))
             .toList();
 
@@ -336,9 +356,9 @@ class _FriendsScreenState extends State<FriendsScreen> {
                 final name = snap.data ?? fromPeerId;
 
                 return ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: Colors.white12,
-                    child: Icon(Icons.person_add, color: Colors.white70),
+                  leading: _PeerAvatar(
+                    peerId: fromPeerId,
+                    fallbackIcon: Icons.person_add,
                   ),
                   title: Text(
                     name,
@@ -362,9 +382,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text(
-                                        'Declined request from $name',
-                                      ),
+                                      content: Text('Declined request from $name'),
                                     ),
                                   );
                                 }
@@ -385,9 +403,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text(
-                                        'You are now friends with $name',
-                                      ),
+                                      content: Text('You are now friends with $name'),
                                     ),
                                   );
                                 }
@@ -439,6 +455,37 @@ class _FriendsTabButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _PeerAvatar extends StatelessWidget {
+  final String peerId;
+  final double radius;
+  final IconData fallbackIcon;
+
+  const _PeerAvatar({
+    required this.peerId,
+    this.radius = 20,
+    this.fallbackIcon = Icons.person,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Uint8List?>(
+      future: DittoService.instance.getAvatarBytesForPeer(peerId),
+      builder: (context, snap) {
+        final bytes = snap.data;
+
+        return CircleAvatar(
+          radius: radius,
+          backgroundColor: Colors.white12,
+          backgroundImage: bytes != null ? MemoryImage(bytes) : null,
+          child: bytes == null
+              ? Icon(fallbackIcon, color: Colors.white70, size: radius)
+              : null,
+        );
+      },
     );
   }
 }

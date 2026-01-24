@@ -1,6 +1,11 @@
+import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:PeerReal/services/dql_builder_service.dart';
 import 'package:PeerReal/widgets/peer_real_post_card.dart';
+import 'package:ditto_live/ditto_live.dart';
 import 'package:flutter/material.dart';
+
 import '../services/ditto_service.dart';
 
 class FriendProfileScreen extends StatefulWidget {
@@ -22,11 +27,17 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
   int? _momentsCount;
   int? _friendsCount;
 
+  Uint8List? _avatarBytes;
+  StoreObserver? _avatarObserver;
+  StreamSubscription? _avatarObserverSub;
+
   @override
   void initState() {
     super.initState();
     _displayName = widget.initialDisplayName;
     _loadProfile();
+    _loadAvatar();
+    _startAvatarObserver();
   }
 
   Future<void> _loadProfile() async {
@@ -44,10 +55,43 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
     });
   }
 
+  Future<void> _loadAvatar() async {
+    final bytes = await DittoService.instance.getAvatarBytesForPeer(widget.peerId);
+    if (!mounted) return;
+    setState(() => _avatarBytes = bytes);
+  }
+
+  void _startAvatarObserver() {
+    // Refresh when the profile doc changes (avatar token update / unset).
+    try {
+      _avatarObserver = DittoService.instance.ditto.store.registerObserver(
+        '''
+        SELECT avatar, avatarUpdatedAt, createdAt FROM profiles
+        WHERE peerId = :id
+        ORDER BY createdAt DESC
+        LIMIT 1
+        ''',
+        arguments: {'id': widget.peerId},
+      );
+
+      _avatarObserverSub = _avatarObserver?.changes.listen((_) => _loadAvatar());
+    } catch (_) {
+      // ignore
+    }
+  }
+
+  @override
+  void dispose() {
+    _avatarObserverSub?.cancel();
+    _avatarObserver?.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final name = _displayName ?? 'Loading…';
-    final handle = '@${widget.peerId.substring(0, 8)}';
+    final short = widget.peerId.length >= 8 ? widget.peerId.substring(0, 8) : widget.peerId;
+    final handle = '@$short';
 
     return Scaffold(
       backgroundColor: const Color(0xFF05050A),
@@ -63,10 +107,15 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
           children: [
             Row(
               children: [
-                const CircleAvatar(
+                CircleAvatar(
                   radius: 32,
                   backgroundColor: Colors.white12,
-                  child: Icon(Icons.person, size: 32, color: Colors.white70),
+                  backgroundImage:
+                      _avatarBytes != null ? MemoryImage(_avatarBytes!) : null,
+                  child: _avatarBytes == null
+                      ? const Icon(Icons.person,
+                          size: 32, color: Colors.white70)
+                      : null,
                 ),
                 const SizedBox(width: 16),
                 Column(
@@ -92,9 +141,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                 ),
               ],
             ),
-
             const SizedBox(height: 24),
-
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -109,9 +156,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                 const _ProfileStat(label: 'Streak', value: '0'), // TODO:
               ],
             ),
-
             const SizedBox(height: 24),
-
             const Text(
               'Latest moments',
               style: TextStyle(
@@ -121,7 +166,6 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
               ),
             ),
             const SizedBox(height: 12),
-
             Expanded(
               child: DqlBuilderService(
                 ditto: DittoService.instance.ditto,
@@ -141,7 +185,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                       child: Text(
                         "$name has no PeerReal moments yet😔",
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white38, fontSize: 13),
+                        style: const TextStyle(color: Colors.white38, fontSize: 13),
                       ),
                     );
                   }

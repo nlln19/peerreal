@@ -593,7 +593,7 @@ class DittoService {
       final any = res.items.first.value['avatar'];
       if (any == null || any is! Map) return null;
 
-      final token = Map<String, dynamic>.from(any as Map);
+      final token = Map<String, dynamic>.from(any);
       final tokenId = token['id'] as String?;
       if (tokenId == null || tokenId.isEmpty) return null;
 
