@@ -1,3 +1,4 @@
+import 'package:PeerReal/services/logger_service.dart';
 import 'package:flutter/material.dart';
 import 'package:PeerReal/services/ditto_service.dart';
 
@@ -32,6 +33,10 @@ class _AuthScreenState extends State<AuthScreen> {
     super.dispose();
   }
 
+  Future<void> _ensureDittoReady() async {
+    await DittoService.instance.init();
+  }
+
   Future<void> _checkUsername() async {
     setState(() {
       _busy = true;
@@ -39,6 +44,8 @@ class _AuthScreenState extends State<AuthScreen> {
     });
 
     try {
+      await _ensureDittoReady();
+
       final name = _nameC.text.trim();
       if (name.isEmpty) throw StateError('Bitte Username eingeben.');
 
@@ -58,12 +65,15 @@ class _AuthScreenState extends State<AuthScreen> {
       setState(() {
         _error = e is StateError ? e.message : 'Fehler beim Prüfen.';
       });
+      logger.e(e);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
   Future<void> _submit() async {
+    await _ensureDittoReady();
+
     setState(() {
       _busy = true;
       _error = null;
@@ -79,7 +89,10 @@ class _AuthScreenState extends State<AuthScreen> {
       } else if (_step == _Step.signup) {
         if (pw.length < 6) throw StateError('Passwort min. 6 Zeichen.');
         if (pw != pw2) throw StateError('Passwörter stimmen nicht überein.');
-        await DittoService.instance.signupNewUser(displayName: name, password: pw);
+        await DittoService.instance.signupNewUser(
+          displayName: name,
+          password: pw,
+        );
       } else if (_step == _Step.setPassword) {
         if (_hit == null) throw StateError('User nicht gefunden.');
         if (pw.length < 6) throw StateError('Passwort min. 6 Zeichen.');
@@ -98,12 +111,18 @@ class _AuthScreenState extends State<AuthScreen> {
     } catch (e) {
       final msg = e.toString();
       setState(() {
-        if (msg.contains('NAME_TAKEN')) _error = 'Username ist bereits vergeben.';
-        else if (msg.contains('NO_USER')) _error = 'User nicht gefunden.';
-        else if (msg.contains('NO_PASSWORD_SET')) _error = 'Kein Passwort gesetzt – bitte einmal setzen.';
-        else if (msg.contains('WRONG_PASSWORD')) _error = 'Falsches Passwort.';
-        else if (e is StateError) _error = e.message;
-        else _error = 'Authentifizierung fehlgeschlagen.';
+        if (msg.contains('NAME_TAKEN')) {
+          _error = 'Username ist bereits vergeben.';
+        } else if (msg.contains('NO_USER'))
+          _error = 'User nicht gefunden.';
+        else if (msg.contains('NO_PASSWORD_SET'))
+          _error = 'Kein Passwort gesetzt – bitte einmal setzen.';
+        else if (msg.contains('WRONG_PASSWORD'))
+          _error = 'Falsches Passwort.';
+        else if (e is StateError)
+          _error = e.message;
+        else
+          _error = 'Authentifizierung fehlgeschlagen.';
       });
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -192,7 +211,9 @@ class _AuthScreenState extends State<AuthScreen> {
                           const SizedBox(height: 12),
                           _PasswordField(
                             controller: _pwC,
-                            label: _step == _Step.login ? 'Passwort' : 'Passwort festlegen',
+                            label: _step == _Step.login
+                                ? 'Passwort'
+                                : 'Passwort festlegen',
                             enabled: !_busy,
                             show: _showPw,
                             onToggle: () => setState(() => _showPw = !_showPw),
@@ -205,7 +226,8 @@ class _AuthScreenState extends State<AuthScreen> {
                               label: 'Passwort bestätigen',
                               enabled: !_busy,
                               show: _showPw,
-                              onToggle: () => setState(() => _showPw = !_showPw),
+                              onToggle: () =>
+                                  setState(() => _showPw = !_showPw),
                               textInputAction: TextInputAction.done,
                             ),
                           ],
@@ -227,7 +249,9 @@ class _AuthScreenState extends State<AuthScreen> {
                         ElevatedButton(
                           onPressed: _busy
                               ? null
-                              : (_step == _Step.username ? _checkUsername : _submit),
+                              : (_step == _Step.username
+                                    ? _checkUsername
+                                    : _submit),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: fg,
                             foregroundColor: bg,
@@ -249,10 +273,10 @@ class _AuthScreenState extends State<AuthScreen> {
                                   _step == _Step.username
                                       ? 'Continue'
                                       : _step == _Step.login
-                                          ? 'Login'
-                                          : _step == _Step.signup
-                                              ? 'Account erstellen'
-                                              : 'Passwort speichern',
+                                      ? 'Login'
+                                      : _step == _Step.signup
+                                      ? 'Account erstellen'
+                                      : 'Passwort speichern',
                                   style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w800,
