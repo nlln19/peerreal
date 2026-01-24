@@ -29,9 +29,6 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _currentWindowId;
   Uint8List? _profileAvatarBytes;
 
-  StoreObserver? _avatarObserver;
-  StreamSubscription<QueryResult>? _avatarSub;
-
   @override
   void initState() {
     super.initState();
@@ -77,7 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final me = service.activeUserId;
 
     try {
-      final obs = service.ditto.store.registerObserver(
+      service.ditto.store.registerObserver(
         '''
         SELECT avatar FROM profiles
         WHERE peerId = :id
@@ -87,15 +84,6 @@ class _HomeScreenState extends State<HomeScreen> {
         arguments: {'id': me},
       );
 
-      _avatarObserver = obs;
-      _avatarSub = obs.changes.listen((_) async {
-        final bytes = await service.getAvatarBytesForPeer(me);
-        if (bytes != null) {
-          await ProfileAvatarService.saveForPeer(me, bytes);
-        }
-        if (!mounted) return;
-        setState(() => _profileAvatarBytes = bytes);
-      });
     } catch (e) {
       logger.e('❌ Failed to start avatar observer: $e');
     }

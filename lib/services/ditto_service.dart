@@ -62,7 +62,8 @@ class DittoService {
   String? get displayName => _displayName;
 
   final Map<String, String> _profileNameCache = {}; // peerId -> displayName
-  final Map<String, _AvatarCacheEntry> _avatarCache = {}; // peerId -> avatar cache
+  final Map<String, _AvatarCacheEntry> _avatarCache =
+      {}; // peerId -> avatar cache
 
   // Notification tracking
   StoreObserver? _postObserver;
@@ -210,17 +211,20 @@ class DittoService {
     final d = _ditto;
     if (d == null) return;
 
-    d.store.execute('SELECT _id FROM reals', arguments: {}).then((result) {
-      for (final item in result.items) {
-        final docId = item.value['_id'] as String;
-        _seenPostIds.add(docId);
-      }
-      logger.i(
-        '👂 Loaded ${_seenPostIds.length} existing posts to skip notifications',
-      );
-    }).catchError((e) {
-      logger.e('❌ Error loading existing posts: $e');
-    });
+    d.store
+        .execute('SELECT _id FROM reals', arguments: {})
+        .then((result) {
+          for (final item in result.items) {
+            final docId = item.value['_id'] as String;
+            _seenPostIds.add(docId);
+          }
+          logger.i(
+            '👂 Loaded ${_seenPostIds.length} existing posts to skip notifications',
+          );
+        })
+        .catchError((e) {
+          logger.e('❌ Error loading existing posts: $e');
+        });
 
     _postObserver = d.store.registerObserver(
       'SELECT * FROM reals ORDER BY createdAt DESC',
@@ -247,8 +251,8 @@ class DittoService {
             final ns = NotificationService.instance;
             try {
               await (ns as dynamic).showNewPostNotification(
-              authorName: authorName,
-              authorId: author,
+                authorName: authorName,
+                authorId: author,
               );
             } catch (_) {
               // NotificationService may not expose this method on all platforms.
@@ -295,7 +299,6 @@ class DittoService {
     }
   }
 
-  
   // ---------------- DAILY WINDOW LOGIC ----------------
 
   String _generateDailyWindowId() {
@@ -319,7 +322,7 @@ class DittoService {
     }
   }
 
-// ---------------- PROFILE / USERNAME ----------------
+  // ---------------- PROFILE / USERNAME ----------------
 
   Future<void> _initLocalPeerId() async {
     if (_localPeerIdInitialized) return;
@@ -355,10 +358,7 @@ class DittoService {
         ${me != null ? "AND peerId != :me" : ""}
         LIMIT 1
         ''',
-        arguments: {
-          "name": trimmed,
-          if (me != null) "me": me,
-        },
+        arguments: {"name": trimmed, if (me != null) "me": me},
       );
 
       final available = res.items.isEmpty;
@@ -511,7 +511,7 @@ class DittoService {
             'createdAt': now,
             'avatar': attachment,
             'avatarUpdatedAt': now,
-          }
+          },
         },
       );
     } else {
@@ -531,6 +531,48 @@ class DittoService {
 
   /// Fetches (and lazily downloads) a peer's current avatar bytes from Ditto.
   /// Returns null if the peer has no avatar set.
+
+  /// Deletes the currently logged-in user's avatar from their `profiles` document.
+  /// This propagates to other peers (the `avatar` field becomes NULL).
+  Future<void> deleteCurrentUserAvatar() async {
+    final d = _ditto;
+    if (d == null) {
+      throw StateError('DittoService not initialized. Call init() first.');
+    }
+    final userId = _currentUserId;
+    if (userId == null) {
+      throw StateError('Not logged in');
+    }
+
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final docId = await _primaryProfileDocIdForUser(userId);
+    if (docId == null) {
+      // Nothing to delete, but ensure local cache is cleared.
+      _avatarCache.remove(userId);
+      return;
+    }
+
+    await d.store.execute(
+      '''
+  UPDATE COLLECTION profiles (avatar ATTACHMENT)
+  UNSET avatar
+  WHERE _id = :id
+  ''',
+      arguments: {'id': docId},
+    );
+
+    await d.store.execute(
+      '''
+  UPDATE profiles
+  SET avatarUpdatedAt = :ts
+  WHERE _id = :id
+  ''',
+      arguments: {'ts': now, 'id': docId},
+    );
+
+    _avatarCache.remove(userId);
+  }
+
   Future<Uint8List?> getAvatarBytesForPeer(String peerId) async {
     final d = _ditto;
     if (d == null) return null;
@@ -570,7 +612,6 @@ class DittoService {
       return null;
     }
   }
-
 
   Future<String> getValueOfMoments(String peerId) async {
     return '0';
@@ -757,7 +798,7 @@ class DittoService {
           'displayName': name,
           'createdAt': now,
           'password': pw,
-        }
+        },
       },
     );
 
@@ -803,7 +844,6 @@ class DittoService {
 
     await _saveSession(userId: hit.userId, displayName: hit.displayName);
   }
-
 
   /// Change password for the currently logged in user.
   /// Requires confirming the old password.
@@ -877,12 +917,15 @@ class DittoService {
       logger.i('📸 Saving image: ${imageBytes.length} bytes');
 
       final attachment = await d.store.newAttachment(imageBytes);
-      logger.i('✅ Attachment created. id=${attachment.id}, len=${attachment.len}');
+      logger.i(
+        '✅ Attachment created. id=${attachment.id}, len=${attachment.len}',
+      );
 
       final dailyWindowId = await getCurrentDailyWindowId();
 
       final newDocument = {
-        "name": fileName ?? 'photo_${DateTime.now().millisecondsSinceEpoch}.jpg',
+        "name":
+            fileName ?? 'photo_${DateTime.now().millisecondsSinceEpoch}.jpg',
         "createdAt": DateTime.now().millisecondsSinceEpoch,
         "attachment": attachment,
         "author": activeUserId,
@@ -930,7 +973,8 @@ class DittoService {
       final dailyWindowId = await getCurrentDailyWindowId();
 
       final newDocument = {
-        "name": fileName ?? 'peerreal_${DateTime.now().millisecondsSinceEpoch}.jpg',
+        "name":
+            fileName ?? 'peerreal_${DateTime.now().millisecondsSinceEpoch}.jpg',
         "createdAt": DateTime.now().millisecondsSinceEpoch,
         "attachment": mainAttachment,
         "selfieAttachment": selfieAttachment,

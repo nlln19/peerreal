@@ -60,20 +60,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _displayName = name;
     });
   }
-
   Future<void> _loadAvatar() async {
     final service = DittoService.instance;
     final me = service.activeUserId;
 
     Uint8List? bytes;
+
     if (service.isLoggedIn) {
       bytes = await service.getAvatarBytesForPeer(me);
       if (bytes != null) {
         await ProfileAvatarService.saveForPeer(me, bytes);
+      } else {
+        // Avatar removed in Ditto → prevent stale local fallback.
+        await ProfileAvatarService.clearForPeer(me);
       }
+    } else {
+      bytes = await ProfileAvatarService.loadForPeer(me);
     }
-
-    bytes ??= await ProfileAvatarService.loadForPeer(me);
 
     if (!mounted) return;
     setState(() => _avatarBytes = bytes);
@@ -157,7 +160,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-
   void _startAvatarObserver() {
     final service = DittoService.instance;
     if (!service.isLoggedIn) return;
@@ -180,6 +182,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final bytes = await service.getAvatarBytesForPeer(me);
         if (bytes != null) {
           await ProfileAvatarService.saveForPeer(me, bytes);
+        } else {
+          await ProfileAvatarService.clearForPeer(me);
         }
         if (!mounted) return;
         setState(() => _avatarBytes = bytes);

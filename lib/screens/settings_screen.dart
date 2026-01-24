@@ -1,6 +1,7 @@
 import 'package:PeerReal/auth_gate.dart';
 import 'package:flutter/material.dart';
 import 'package:PeerReal/services/ditto_service.dart';
+import 'package:PeerReal/services/profile_avatar_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -226,7 +227,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return AlertDialog(
           title: const Text('Delete account'),
           content: const Text(
-            'This will delete your profile, friendships and all your Reals.\n\n'
+            'This will delete your profile, friendships and all your reals.\n\n'
             'Are you sure?',
           ),
           actions: [
@@ -301,6 +302,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+
+  Future<void> _confirmDeleteProfilePicture() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete profile picture?'),
+        content: const Text(
+          'This will remove your profile picture.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Delete'),
+            ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final service = DittoService.instance;
+    final me = service.activeUserId;
+
+    // Always clear local cache so UI updates immediately on this device.
+    await ProfileAvatarService.clearForPeer(me);
+
+    // If logged in, also propagate deletion via Ditto.
+    if (service.isLoggedIn) {
+      await service.deleteCurrentUserAvatar();
+    }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          service.isLoggedIn
+              ? 'Profile picture deleted'
+              : 'Profile picture removed on this device',
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final nameLabel = _currentName ?? 'not set yet';
@@ -330,6 +379,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
             trailing: const Icon(Icons.edit, color: Colors.white70),
             onTap: _changeDisplayName,
           ),
+
+          // Profile picture
+          ListTile(
+            leading: const Icon(Icons.image_outlined, color: Colors.white),
+            title: const Text(
+              'Delete profile picture',
+              style: TextStyle(color: Colors.white),
+            ),
+            subtitle: const Text(
+              'Remove your avatar',
+              style: TextStyle(color: Colors.white54),
+            ),
+            onTap: _confirmDeleteProfilePicture,
+          ),
+
 
           // Change password
           ListTile(
