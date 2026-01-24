@@ -47,7 +47,7 @@ class _AuthScreenState extends State<AuthScreen> {
       await _ensureDittoReady();
 
       final name = _nameC.text.trim();
-      if (name.isEmpty) throw StateError('Bitte Username eingeben.');
+      if (name.isEmpty) throw StateError('Please enter your username');
 
       final hit = await DittoService.instance.lookupUserByDisplayName(name);
 
@@ -63,7 +63,7 @@ class _AuthScreenState extends State<AuthScreen> {
       });
     } catch (e) {
       setState(() {
-        _error = e is StateError ? e.message : 'Fehler beim Prüfen.';
+        _error = e is StateError ? e.message : 'Error during verification';
       });
       logger.e(e);
     } finally {
@@ -87,16 +87,16 @@ class _AuthScreenState extends State<AuthScreen> {
       if (_step == _Step.login) {
         await DittoService.instance.loginUser(displayName: name, password: pw);
       } else if (_step == _Step.signup) {
-        if (pw.length < 6) throw StateError('Passwort min. 6 Zeichen.');
-        if (pw != pw2) throw StateError('Passwörter stimmen nicht überein.');
+        if (pw.length < 6) throw StateError('Password min. 6 characters');
+        if (pw != pw2) throw StateError('Passwords do not match');
         await DittoService.instance.signupNewUser(
           displayName: name,
           password: pw,
         );
       } else if (_step == _Step.setPassword) {
-        if (_hit == null) throw StateError('User nicht gefunden.');
-        if (pw.length < 6) throw StateError('Passwort min. 6 Zeichen.');
-        if (pw != pw2) throw StateError('Passwörter stimmen nicht überein.');
+        if (_hit == null) throw StateError('User not found');
+        if (pw.length < 6) throw StateError('Password min. 6 characters');
+        if (pw != pw2) throw StateError('Passwords do not match');
         await DittoService.instance.setPasswordForExistingUser(
           docId: _hit!.docId,
           userId: _hit!.userId,
@@ -112,17 +112,17 @@ class _AuthScreenState extends State<AuthScreen> {
       final msg = e.toString();
       setState(() {
         if (msg.contains('NAME_TAKEN')) {
-          _error = 'Username ist bereits vergeben.';
+          _error = 'Username is already taken';
         } else if (msg.contains('NO_USER'))
-          _error = 'User nicht gefunden.';
+          _error = 'User not found';
         else if (msg.contains('NO_PASSWORD_SET'))
-          _error = 'Kein Passwort gesetzt – bitte einmal setzen.';
+          _error = 'No password set – please set one';
         else if (msg.contains('WRONG_PASSWORD'))
-          _error = 'Falsches Passwort.';
+          _error = 'Wrong password';
         else if (e is StateError)
           _error = e.message;
         else
-          _error = 'Authentifizierung fehlgeschlagen.';
+          _error = 'Authentication failed';
       });
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -146,16 +146,16 @@ class _AuthScreenState extends State<AuthScreen> {
 
     final title = switch (_step) {
       _Step.username => 'PeerReal.',
-      _Step.login => 'Welcome back',
-      _Step.signup => 'Create your profile',
-      _Step.setPassword => 'Secure your profile',
+      _Step.login => 'Welcome back, ${_hit?.displayName}.',
+      _Step.signup => 'Create your profile.',
+      _Step.setPassword => 'Secure your profile.',
     };
 
     final subtitle = switch (_step) {
-      _Step.username => 'Enter your username to continue.',
-      _Step.login => 'Enter your password.',
-      _Step.signup => 'Set a password for your new account.',
-      _Step.setPassword => 'Existing user found. Set password once.',
+      _Step.username => 'Enter your username to continue',
+      _Step.login => 'Enter your password',
+      _Step.signup => 'Set a password for your new account',
+      _Step.setPassword => 'Existing user found. Set password once',
     };
 
     return Scaffold(
@@ -212,8 +212,8 @@ class _AuthScreenState extends State<AuthScreen> {
                           _PasswordField(
                             controller: _pwC,
                             label: _step == _Step.login
-                                ? 'Passwort'
-                                : 'Passwort festlegen',
+                                ? 'Password'
+                                : 'Set password',
                             enabled: !_busy,
                             show: _showPw,
                             onToggle: () => setState(() => _showPw = !_showPw),
@@ -223,7 +223,7 @@ class _AuthScreenState extends State<AuthScreen> {
                             const SizedBox(height: 12),
                             _PasswordField(
                               controller: _pw2C,
-                              label: 'Passwort bestätigen',
+                              label: 'Confirm password',
                               enabled: !_busy,
                               show: _showPw,
                               onToggle: () =>
@@ -275,8 +275,8 @@ class _AuthScreenState extends State<AuthScreen> {
                                       : _step == _Step.login
                                       ? 'Login'
                                       : _step == _Step.signup
-                                      ? 'Account erstellen'
-                                      : 'Passwort speichern',
+                                      ? 'Create account'
+                                      : 'Save password',
                                   style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w800,
@@ -289,7 +289,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           TextButton(
                             onPressed: _busy ? null : _resetToUsername,
                             child: Text(
-                              'Anderen Username verwenden',
+                              'Use other username',
                               style: TextStyle(
                                 color: fg.withOpacity(0.85),
                                 fontWeight: FontWeight.w700,

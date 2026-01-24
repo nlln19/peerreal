@@ -40,6 +40,7 @@ class DittoService {
   }
 
   late final String localPeerId;
+  bool _localPeerIdInitialized = false;
 
   // Account/session
   String? _currentUserId; // = profiles.peerId (Account-Id)
@@ -281,6 +282,8 @@ class DittoService {
   // ---------------- PROFILE / USERNAME ----------------
 
   Future<void> _initLocalPeerId() async {
+    if (_localPeerIdInitialized) return;
+
     final prefs = await SharedPreferences.getInstance();
     final existing = prefs.getString('localPeerId');
 
@@ -292,6 +295,7 @@ class DittoService {
       await prefs.setString('localPeerId', newId);
     }
 
+    _localPeerIdInitialized = true;
     logger.i('🆔 localPeerId = $localPeerId');
   }
 
@@ -648,6 +652,62 @@ class DittoService {
     if (!ok) throw StateError('WRONG_PASSWORD');
 
     await _saveSession(userId: hit.userId, displayName: hit.displayName);
+  }
+
+  /// Change password for the currently logged in user.
+  /// Requires confirming the old password.
+  ///
+  /// Throws StateError with:
+  /// - NOT_LOGGED_IN
+  /// - DITTO_NOT_READY
+  /// - NO_PASSWORD_SET
+  /// - WRONG_PASSWORD
+  /// - WEAK_PASSWORD
+  Future<void> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    final d = _ditto;
+    if (d == null) throw StateError('DITTO_NOT_READY');
+
+    final userId = _currentUserId;
+    if (userId == null) throw StateError('NOT_LOGGED_IN');
+
+    final newPw = newPassword;
+    if (newPw.length < 6) throw StateError('WEAK_PASSWORD');
+
+    final res = await d.store.execute(
+      '''
+      SELECT _id, password
+      FROM profiles
+      WHERE peerId = :id AND password IS NOT NULL
+      ORDER BY createdAt DESC
+      LIMIT 1
+      ''',
+      arguments: {'id': userId},
+    );
+
+    if (res.items.isEmpty) throw StateError('NO_PASSWORD_SET');
+
+    final storedAny = res.items.first.value['password'];
+    if (storedAny == null) throw StateError('NO_PASSWORD_SET');
+
+    final stored = Map<String, dynamic>.from(storedAny as Map);
+
+    final ok = await PasswordHasher.verifyPassword(oldPassword, stored);
+    if (!ok) throw StateError('WRONG_PASSWORD');
+
+    final pw = await PasswordHasher.hashPassword(newPw);
+
+    // Update all password-bearing profile docs for this user (handles duplicates).
+    await d.store.execute(
+      '''
+      UPDATE profiles
+      SET password = :pw
+      WHERE peerId = :id AND password IS NOT NULL
+      ''',
+      arguments: {'pw': pw, 'id': userId},
+    );
   }
 
   // ---------------- POSTS / IMAGES ----------------

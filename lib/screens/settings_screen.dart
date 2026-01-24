@@ -63,6 +63,163 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _changePassword() async {
+    await DittoService.instance.init();
+
+    final oldC = TextEditingController();
+    final newC = TextEditingController();
+    final new2C = TextEditingController();
+
+    final changed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        bool busy = false;
+        bool show = false;
+        String? error;
+
+        Future<void> submit(StateSetter setModalState) async {
+          void safeSet(VoidCallback fn) {
+            if (dialogContext.mounted) setModalState(fn);
+          }
+
+          final oldPw = oldC.text;
+          final newPw = newC.text;
+          final newPw2 = new2C.text;
+
+          if (newPw != newPw2) {
+            safeSet(() => error = 'New passwords do not match');
+            return;
+          }
+          if (newPw.length < 6) {
+            safeSet(() => error = 'Password must be at least 6 characters');
+            return;
+          }
+
+          safeSet(() {
+            busy = true;
+            error = null;
+          });
+
+          try {
+            await DittoService.instance.changePassword(
+              oldPassword: oldPw,
+              newPassword: newPw,
+            );
+
+            if (dialogContext.mounted) {
+              Navigator.of(dialogContext).pop(true);
+            }
+          } catch (e) {
+            final msg = e.toString();
+            safeSet(() {
+              if (msg.contains('WRONG_PASSWORD')) {
+                error = 'Old password is incorrect';
+              } else if (msg.contains('NO_PASSWORD_SET')) {
+                error = 'This account has no password set yet';
+              } else if (msg.contains('NOT_LOGGED_IN')) {
+                error = 'You are not logged in';
+              } else if (msg.contains('WEAK_PASSWORD')) {
+                error = 'Password must be at least 6 characters';
+              } else {
+                error = 'Failed to change password: $e';
+              }
+            });
+          } finally {
+            safeSet(() => busy = false);
+          }
+        }
+
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              title: const Text('Change password'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: oldC,
+                      obscureText: !show,
+                      decoration: const InputDecoration(
+                        labelText: 'Old password',
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: newC,
+                      obscureText: !show,
+                      decoration: const InputDecoration(
+                        labelText: 'New password',
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: new2C,
+                      obscureText: !show,
+                      decoration: const InputDecoration(
+                        labelText: 'Confirm new password',
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: show,
+                          onChanged: busy
+                              ? null
+                              : (v) => setModalState(() => show = v ?? false),
+                        ),
+                        const Text('Show'),
+                      ],
+                    ),
+                    if (error != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        error!,
+                        style: const TextStyle(color: Colors.redAccent),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: busy
+                      ? null
+                      : () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: busy ? null : () => submit(setModalState),
+                  child: busy
+                      ? const SizedBox(
+                          height: 16,
+                          width: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    // Controller erst nach dem Pop-Frame disposen -> verhindert "used after disposed"
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      oldC.dispose();
+      newC.dispose();
+      new2C.dispose();
+    });
+
+    if (changed == true && mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Password updated')));
+    }
+  }
+
   Future<void> _confirmDeleteAccount() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -70,7 +227,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return AlertDialog(
           title: const Text('Delete account'),
           content: const Text(
-            'This will delete your profile, friendships and all your Reals on this device.\n\n'
+            'This will delete your profile, friendships and all your Reals.\n\n'
             'Are you sure?',
           ),
           actions: [
@@ -79,7 +236,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: const Text('Cancel'),
             ),
             TextButton(
-              onPressed: () => {Navigator.pop(context, true)},
+              onPressed: () => Navigator.pop(context, true),
               style: TextButton.styleFrom(foregroundColor: Colors.red),
               child: const Text('Delete'),
             ),
@@ -102,10 +259,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (ok) {
-      await DittoService.instance.deleteAccountAndData();
-      if (!mounted) return;
-
-      Navigator.of(context).pushAndRemoveUntil(
+      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const AuthGate()),
         (route) => false,
       );
@@ -142,8 +296,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await DittoService.instance.logout();
     if (!mounted) return;
 
-    // Clear the navigation stack and go back to the auth flow.
-    Navigator.of(context).pushAndRemoveUntil(
+    // Note: We reset the full navigation stack so the user cannot go back
+    // into authenticated screens after logout.
+    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const AuthGate()),
       (route) => false,
     );
@@ -177,6 +332,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             trailing: const Icon(Icons.edit, color: Colors.white70),
             onTap: _changeDisplayName,
+          ),
+
+          // Change password
+          ListTile(
+            leading: const Icon(Icons.lock_outline, color: Colors.white),
+            title: const Text(
+              'Change password',
+              style: TextStyle(color: Colors.white),
+            ),
+            subtitle: const Text(
+              'Confirm old password and set a new one',
+              style: TextStyle(color: Colors.white54),
+            ),
+            onTap: _changePassword,
           ),
 
           const Divider(color: Colors.white12),
