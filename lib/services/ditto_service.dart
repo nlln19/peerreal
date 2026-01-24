@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:PeerReal/services/password_hasher.dart';
 import 'package:ditto_live/ditto_live.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -23,6 +24,25 @@ class DittoService {
   }
 
   late final String localPeerId;
+  String? _currentUserId; // = profiles.peerId (Account-Id)
+  String? get currentUserId => _currentUserId;
+  bool get isLoggedIn => _currentUserId != null;
+
+  // überall statt localPeerId verwenden (Posts/Friends/etc.)
+  String get activeUserId => _currentUserId ?? localPeerId;
+  Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('currentUserId');
+    await prefs.remove('currentDisplayName');
+
+    final prev = _currentUserId;
+    _currentUserId = null;
+    _displayName = null;
+
+    if (prev != null) {
+      _profileNameCache.remove(prev);
+    }
+  }
 
   String? _displayName;
   String? get displayName => _displayName;
@@ -38,6 +58,7 @@ class DittoService {
     if (_ditto != null) return _ditto!;
 
     await _initLocalPeerId();
+    await loadSession();
     await Ditto.init();
 
     final appId = dotenv.env['DITTO_APP_ID']!;
@@ -118,7 +139,7 @@ class DittoService {
 
         // Skip if it's our own post or we've already notified about it
         if (author == null ||
-            author == localPeerId ||
+            author == activeUserId ||
             _seenPostIds.contains(postId)) {
           continue;
         }
@@ -162,7 +183,7 @@ class DittoService {
         ORDER BY createdAt DESC
         LIMIT 1
         ''',
-        arguments: {"id": localPeerId},
+        arguments: {"id": activeUserId},
       );
 
       if (res.items.isNotEmpty) {
@@ -170,7 +191,7 @@ class DittoService {
         final name = value['displayName'] as String?;
         if (name != null && name.isNotEmpty) {
           _displayName = name;
-          _profileNameCache[localPeerId] = name;
+          _profileNameCache[activeUserId] = name;
           logger.i('👤 Loaded existing profile name: $name');
         }
       }
@@ -236,8 +257,8 @@ class DittoService {
 
     await ensureProfile(displayName: trimmed);
     _displayName = trimmed;
-    _profileNameCache[localPeerId] = trimmed;
-    logger.i('✅ DisplayName set to "$trimmed" for $localPeerId');
+    _profileNameCache[activeUserId] = trimmed;
+    logger.i('✅ DisplayName set to "$trimmed" for $activeUserId');
     return true;
   }
 
@@ -252,7 +273,7 @@ class DittoService {
       ''',
       arguments: {
         "doc": {
-          "peerId": localPeerId,
+          "peerId": activeUserId,
           "displayName": displayName,
           "createdAt": DateTime.now().millisecondsSinceEpoch,
         },
@@ -323,7 +344,7 @@ class DittoService {
             fileName ?? 'photo_${DateTime.now().millisecondsSinceEpoch}.jpg',
         "createdAt": DateTime.now().millisecondsSinceEpoch,
         "attachment": attachment,
-        "author": localPeerId,
+        "author": activeUserId,
         "size": imageBytes.length,
       };
 
@@ -370,7 +391,7 @@ class DittoService {
         "createdAt": DateTime.now().millisecondsSinceEpoch,
         "attachment": mainAttachment,
         "selfieAttachment": selfieAttachment,
-        "author": localPeerId,
+        "author": activeUserId,
         "mainSize": mainBytes.length,
         "selfieSize": selfieBytes.length,
       };
@@ -483,7 +504,7 @@ class DittoService {
         ORDER BY updatedAt DESC
         LIMIT 1
         ''',
-        arguments: {'me': localPeerId, 'other': toPeerId},
+        arguments: {'me': activeUserId, 'other': toPeerId},
       );
 
       if (existing.items.isNotEmpty) {
@@ -503,7 +524,7 @@ class DittoService {
         ''',
         arguments: {
           "doc": {
-            "fromPeerId": localPeerId,
+            "fromPeerId": activeUserId,
             "toPeerId": toPeerId,
             "status": 'pending',
             "createdAt": now,
@@ -567,7 +588,7 @@ class DittoService {
       ORDER BY createdAt DESC
       LIMIT 1
       ''',
-        arguments: {'me': localPeerId, 'other': otherPeerId},
+        arguments: {'me': activeUserId, 'other': otherPeerId},
       );
 
       if (res.items.isEmpty) {
@@ -629,7 +650,7 @@ class DittoService {
     if (d == null) return false;
 
     try {
-      final id = localPeerId;
+      final id = activeUserId;
 
       await d.store.execute(
         '''
@@ -658,8 +679,12 @@ class DittoService {
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('localPeerId');
+      await prefs.remove('authLoggedIn');
+      await prefs.remove('currentUserId');
+      await prefs.remove('currentDisplayName');
 
       _displayName = null;
+      _currentUserId = null;
       _profileNameCache.clear();
 
       logger.i('🗑️ Account & data deleted for $id');
@@ -670,10 +695,199 @@ class DittoService {
     }
   }
 
+  // --- Auth (account-based) ---
+  // Note: Local-device auth helpers (registerLocalUser/loginLocalUser/setLocalPassword) removed.
+  // Use: lookupUserByDisplayName, signupNewUser, setPasswordForExistingUser, loginUser, loadSession, logout.
+
+  Future<void> loadSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    _currentUserId = prefs.getString('currentUserId');
+    _displayName = prefs.getString('currentDisplayName');
+
+    if (_currentUserId != null) {
+      _profileNameCache[_currentUserId!] = _displayName ?? '';
+    }
+  }
+
+  Future<void> _saveSession({
+    required String userId,
+    required String displayName,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('currentUserId', userId);
+    await prefs.setString('currentDisplayName', displayName);
+
+    _currentUserId = userId;
+    _displayName = displayName;
+    _profileNameCache[userId] = displayName;
+  }
+
+  Future<void> signupNewUser({
+    required String displayName,
+    required String password,
+  }) async {
+    final d = _ditto;
+    if (d == null) throw StateError('Ditto not initialized');
+
+    final name = displayName.trim();
+    if (name.isEmpty) throw StateError('USERNAME_EMPTY');
+
+    final existing = await lookupUserByDisplayName(name);
+    if (existing != null) throw StateError('NAME_TAKEN');
+
+    final userId = const Uuid().v4(); // Account-Id
+    final pw = await PasswordHasher.hashPassword(password);
+    final now = DateTime.now().millisecondsSinceEpoch;
+
+    await d.store.execute(
+      '''
+    INSERT INTO COLLECTION profiles
+    DOCUMENTS (:doc)
+    ''',
+      arguments: {
+        'doc': {
+          '_id': userId,
+          'peerId': userId,
+          'displayName': name,
+          'createdAt': now,
+          'password': pw,
+        },
+      },
+    );
+
+    await _saveSession(userId: userId, displayName: name);
+  }
+
+  Future<void> setPasswordForExistingUser({
+    required String docId,
+    required String userId,
+    required String displayName,
+    required String password,
+  }) async {
+    final d = _ditto;
+    if (d == null) throw StateError('Ditto not initialized');
+
+    final pw = await PasswordHasher.hashPassword(password);
+
+    await d.store.execute(
+      '''
+    UPDATE profiles
+    SET password = :pw
+    WHERE _id = :id
+    ''',
+      arguments: {'pw': pw, 'id': docId},
+    );
+
+    await _saveSession(userId: userId, displayName: displayName);
+  }
+
+  Future<void> loginUser({
+    required String displayName,
+    required String password,
+  }) async {
+    final hit = await lookupUserByDisplayName(displayName);
+    if (hit == null) throw StateError('NO_USER');
+    if (!hit.hasPassword) throw StateError('NO_PASSWORD_SET');
+
+    final stored = await _getPasswordMapByDocId(hit.docId);
+    if (stored == null) throw StateError('NO_PASSWORD_SET');
+
+    final ok = await PasswordHasher.verifyPassword(password, stored);
+    if (!ok) throw StateError('WRONG_PASSWORD');
+
+    await _saveSession(userId: hit.userId, displayName: hit.displayName);
+  }
+
+  Future<UserLookup?> lookupUserByDisplayName(String displayName) async {
+    final d = _ditto;
+    if (d == null) return null;
+
+    final name = displayName.trim();
+    if (name.isEmpty) return null;
+
+    // 1) bevorzugt den Datensatz mit Passwort
+    final withPw = await d.store.execute(
+      '''
+    SELECT _id, peerId, displayName, password, createdAt
+    FROM profiles
+    WHERE lower(displayName) = lower(:name)
+      AND password IS NOT NULL
+    ORDER BY createdAt DESC
+    LIMIT 1
+    ''',
+      arguments: {'name': name},
+    );
+
+    if (withPw.items.isNotEmpty) {
+      final v = withPw.items.first.value;
+      return UserLookup(
+        docId: v['_id'] as String,
+        userId: v['peerId'] as String,
+        displayName: v['displayName'] as String,
+        hasPassword: true,
+      );
+    }
+
+    // 2) sonst irgendeinen (legacy user ohne Passwort)
+    final any = await d.store.execute(
+      '''
+    SELECT _id, peerId, displayName, password, createdAt
+    FROM profiles
+    WHERE lower(displayName) = lower(:name)
+    ORDER BY createdAt DESC
+    LIMIT 1
+    ''',
+      arguments: {'name': name},
+    );
+
+    if (any.items.isEmpty) return null;
+
+    final v = any.items.first.value;
+    return UserLookup(
+      docId: v['_id'] as String,
+      userId: v['peerId'] as String,
+      displayName: v['displayName'] as String,
+      hasPassword: v['password'] != null,
+    );
+  }
+
+  Future<Map<String, dynamic>?> _getPasswordMapByDocId(String docId) async {
+    final d = _ditto;
+    if (d == null) return null;
+
+    final res = await d.store.execute(
+      '''
+    SELECT password FROM profiles
+    WHERE _id = :id
+    LIMIT 1
+    ''',
+      arguments: {'id': docId},
+    );
+
+    if (res.items.isEmpty) return null;
+    final pw = res.items.first.value['password'];
+    if (pw == null) return null;
+    return Map<String, dynamic>.from(pw as Map);
+  }
+
   void dispose() {
     _postObserver?.cancel();
     _ditto?.stopSync();
     _ditto?.close();
     _ditto = null;
   }
+}
+
+class UserLookup {
+  final String docId; // profiles._id
+  final String userId; // profiles.peerId (Account-Id)
+  final String displayName;
+  final bool hasPassword;
+
+  UserLookup({
+    required this.docId,
+    required this.userId,
+    required this.displayName,
+    required this.hasPassword,
+  });
 }
