@@ -114,52 +114,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _avatarBytes = bytes);
   }
 
-  Future<void> _pickDisplayName(BuildContext context) async {
-    final controller = TextEditingController(text: '');
-    final name = await showDialog<String>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Choose your name'),
-          content: TextField(
-            controller: controller,
-            decoration: const InputDecoration(hintText: 'Enter a unique name'),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, controller.text.trim()),
-              child: const Text('Save'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (name == null || name == '' || name.trim().isEmpty) return;
-
-    final ok = await DittoService.instance.setDisplayName(name);
-    if (!mounted) return;
-
-    if (ok) {
-      setState(() {
-        _displayName = name.trim();
-      });
-      logger.i('✅ Display name set to "$name"');
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          ok ? 'Name set to "$name"' : 'Name "$name" is already taken',
-        ),
-      ),
-    );
-  }
-
   void _startAvatarObserver() {
     final service = DittoService.instance;
     if (!service.isLoggedIn) return;
