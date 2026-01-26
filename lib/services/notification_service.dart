@@ -47,21 +47,7 @@ class NotificationService {
   }
 
   Future<void> requestPermissions() async {
-    // iOS permissions
-    final iosPlugin = _notifications
-        .resolvePlatformSpecificImplementation<
-          IOSFlutterLocalNotificationsPlugin
-        >();
-    await iosPlugin?.requestPermissions(alert: true, badge: true, sound: true);
-
-    // Android 13+ permissions
-    final androidPlugin = _notifications
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >();
-    await androidPlugin?.requestNotificationsPermission();
-
-    logger.i('🔔 Notification permissions requested');
+    logger.i('🔔 Notification permissions requested (handled in init)');
   }
 
   void _onNotificationTapped(NotificationResponse response) {
@@ -77,25 +63,42 @@ class NotificationService {
     return DateTime.fromMillisecondsSinceEpoch(timestamp);
   }
 
-  /// Schedule a daily reminder notification at a random time (BeReal style)
+  /// Schedule a daily reminder notification at a FIXED time (same for everyone)
   /// This is called once when the app starts or when user enables notifications
   Future<void> scheduleDailyPostReminder() async {
     try {
+      // Check if we already have a scheduled notification
+      final prefs = await SharedPreferences.getInstance();
+      final existingTimestamp = prefs.getInt('scheduled_notification_time');
+
+      if (existingTimestamp != null) {
+        final existingTime = DateTime.fromMillisecondsSinceEpoch(
+          existingTimestamp,
+        );
+        final now = DateTime.now();
+
+        // If the existing scheduled time is in the future, don't reschedule
+        if (existingTime.isAfter(now)) {
+          logger.i(
+            '🔔 Already scheduled for ${existingTime.hour}:${existingTime.minute.toString().padLeft(2, '0')} - keeping it!',
+          );
+          return;
+        }
+      }
+
       // Cancel any existing daily reminder
       await _notifications.cancel(999);
 
-      // Calculate random time for tomorrow
+      // FIXED TIME: Always schedule for 2:00 PM (14:00) tomorrow
       final now = DateTime.now();
       final tomorrow = DateTime(now.year, now.month, now.day + 1);
-      final randomHour = 9 + Random().nextInt(12); // Between 9am-9pm
-      final randomMinute = Random().nextInt(60);
 
       final scheduledTime = DateTime(
         tomorrow.year,
         tomorrow.month,
         tomorrow.day,
-        randomHour,
-        randomMinute,
+        10, // Fixed hour: 10 PM
+        0, // Fixed minute: 00
       );
 
       final tzScheduledTime = tz.TZDateTime.from(scheduledTime, tz.local);
@@ -122,23 +125,23 @@ class NotificationService {
 
       await _notifications.zonedSchedule(
         999, // Fixed ID for daily reminder
-        'WAKEY WAKEY PEER REAL RESET',
-        'Capture your moment now mf 🗣️🗣️🗣️🗣️',
+        '⏰ Time to be real!',
+        'Capture your moment now',
         tzScheduledTime,
         details,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        matchDateTimeComponents: DateTimeComponents.time, // Repeat daily
+        matchDateTimeComponents:
+            DateTimeComponents.time, // Repeat daily at this time
       );
 
       // Save the scheduled time
-      final prefs = await SharedPreferences.getInstance();
       await prefs.setInt(
         'scheduled_notification_time',
         scheduledTime.millisecondsSinceEpoch,
       );
 
       logger.i(
-        '🔔 Daily reminder scheduled for ${scheduledTime.hour}:${scheduledTime.minute.toString().padLeft(2, '0')}',
+        '🔔 Daily reminder scheduled for ${scheduledTime.hour}:${scheduledTime.minute.toString().padLeft(2, '0')} (fixed time for all users)',
       );
     } catch (e) {
       logger.e('❌ Error scheduling daily reminder: $e');
