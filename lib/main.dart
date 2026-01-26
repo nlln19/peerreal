@@ -20,9 +20,11 @@ Future<void> main() async {
   // Check if we should start a new daily window
   await DailyWindowService.instance.checkAndStartNewWindowIfNeeded();
 
+  await NotificationService.instance.scheduleDailyPostReminder();
+
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown
+    DeviceOrientation.portraitDown,
   ]);
 
   await PermissionService.requestP2PPermissions();

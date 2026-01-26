@@ -175,9 +175,6 @@ class DittoService {
 
     _ditto = ditto;
 
-    // Initialize daily window ID
-    await checkAndUpdateDailyWindow();
-
     // Only load own displayName if logged in (prevents device-profile pollution).
     if (isLoggedIn) {
       unawaited(_loadOwnProfileDisplayName());
@@ -301,25 +298,31 @@ class DittoService {
 
   // ---------------- DAILY WINDOW LOGIC ----------------
 
-  String _generateDailyWindowId() {
-    // Format: YYYY-MM-DD
-    final now = DateTime.now();
-    return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-  }
-
   Future<String> getCurrentDailyWindowId() async {
     if (_currentDailyWindowId.isEmpty) {
-      _currentDailyWindowId = _generateDailyWindowId();
+      final prefs = await SharedPreferences.getInstance();
+      final counter = prefs.getInt('window_counter') ?? 1;
+      _currentDailyWindowId = 'window-$counter';
+      logger.i(
+        '📅 Current window ID: $_currentDailyWindowId (counter: $counter)',
+      );
     }
     return _currentDailyWindowId;
   }
 
-  Future<void> checkAndUpdateDailyWindow() async {
-    final newWindowId = _generateDailyWindowId();
-    if (_currentDailyWindowId != newWindowId) {
-      _currentDailyWindowId = newWindowId;
-      logger.i('📅 New daily window started: $_currentDailyWindowId');
-    }
+  Future<void> incrementWindowCounter() async {
+    final prefs = await SharedPreferences.getInstance();
+    int currentCounter = prefs.getInt('window_counter') ?? 1;
+    int newCounter = currentCounter + 1;
+
+    await prefs.setInt('window_counter', newCounter);
+
+    final oldWindowId = _currentDailyWindowId;
+    _currentDailyWindowId = 'window-$newCounter';
+
+    logger.i(
+      '📅 ✅ Window incremented: $oldWindowId → $_currentDailyWindowId (counter: $currentCounter → $newCounter)',
+    );
   }
 
   // ---------------- PROFILE / USERNAME ----------------

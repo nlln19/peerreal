@@ -2,8 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>We need access to your photo library to choose a profile picture.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
@@ -28,6 +26,18 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Wir nutzen Bluetooth, um Geräte in der Nähe zu finden und zu verbinden.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>Wir nutzen Bluetooth, um Geräte in der Nähe zu finden und zu verbinden.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>PeerReal needs access to your camera to capture moments and take selfies</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>PeerReal needs microphone access for camera functionality</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>PeerReal needs access to save your photos</string>
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>PeerReal needs notification permissions to alert you when friends post new moments</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
@@ -47,22 +57,5 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	
-	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>Wir nutzen Bluetooth, um Geräte in der Nähe zu finden und zu verbinden.</string>
-
-	<key>NSBluetoothPeripheralUsageDescription</key>
-	<string>Wir nutzen Bluetooth, um Geräte in der Nähe zu finden und zu verbinden.</string>
-
-	<key>NSCameraUsageDescription</key>
-	<string>PeerReal needs access to your camera to capture moments and take selfies</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>PeerReal needs microphone access for camera functionality</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>PeerReal needs access to save your photos</string>
-
-	<key>NSUserNotificationsUsageDescription</key>
-	<string>PeerReal needs notification permissions to alert you when friends post new moments</string>
-	
 </dict>
 </plist>

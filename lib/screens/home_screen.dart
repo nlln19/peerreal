@@ -3,6 +3,7 @@ import 'package:ditto_live/ditto_live.dart';
 import 'package:flutter/cupertino.dart';
 import 'dart:typed_data';
 
+import '../services/daily_window_service.dart';
 import '../widgets/next_post_timer.dart';
 import 'package:flutter/material.dart';
 import '../services/dql_builder_service.dart';
@@ -28,28 +29,65 @@ class _HomeScreenState extends State<HomeScreen> {
   int _feedFilter = 0; // 0 = All, 1 = Friends
   String? _currentWindowId;
   Uint8List? _profileAvatarBytes;
+  Timer? _windowCheckTimer;
 
   @override
   void initState() {
     super.initState();
+    logger.i('🏠 HomeScreen initState called');
     _init();
+    _startWindowChecker();
+  }
+
+  void _startWindowChecker() {
+    logger.i('⏰ Starting window checker timer (10 sec for testing)...');
+
+    // Check every 10 seconds for testing (change to 1 minute for production)
+    _windowCheckTimer = Timer.periodic(const Duration(seconds: 10), (
+      timer,
+    ) async {
+      logger.i('⏰ Timer tick #${timer.tick} - checking for window change...');
+
+      // Check if we should start a new window
+      final shouldStart = await DailyWindowService.instance
+          .shouldStartNewWindow();
+
+      if (shouldStart) {
+        logger.i('🔄 Should start new window! Triggering...');
+        await DailyWindowService.instance.startNewWindow();
+
+        // Reload the window ID
+        final newWindowId = await DittoService.instance
+            .getCurrentDailyWindowId();
+        if (mounted && newWindowId != _currentWindowId) {
+          setState(() {
+            _currentWindowId = newWindowId;
+          });
+        }
+      } else {
+        // Just log current window
+        final currentWindowId = await DittoService.instance
+            .getCurrentDailyWindowId();
+        logger.i('⏸️ Window unchanged: $currentWindowId');
+      }
+    });
+
+    logger.i('✅ Window checker timer started');
   }
 
   Future<void> _init() async {
+    logger.i('🔄 HomeScreen _init started');
     await PermissionService.requestP2PPermissions();
     final ditto = await DittoService.instance.init();
     final windowId = await DittoService.instance.getCurrentDailyWindowId();
-    final avatar = await _loadMyAvatar();
-
+    logger.i('📅 Initial window ID: $windowId');
     if (!mounted) return;
     setState(() {
       _ditto = ditto;
       _currentWindowId = windowId;
-      _profileAvatarBytes = avatar;
     });
-    _startAvatarObserver();
+    logger.i('✅ HomeScreen _init complete');
   }
-
 
   Future<Uint8List?> _loadMyAvatar() async {
     final service = DittoService.instance;
@@ -83,7 +121,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ''',
         arguments: {'id': me},
       );
-
     } catch (e) {
       logger.e('❌ Failed to start avatar observer: $e');
     }
