@@ -203,11 +203,8 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF05050A),
         elevation: 0,
-        centerTitle: true,
-        title: const Text(
-          'PeerReal.',
-          style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.5),
-        ),
+        automaticallyImplyLeading: false,
+
         actions: [
           IconButton(
             icon: const Icon(Icons.people_outline),
@@ -219,6 +216,34 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
         ],
+
+        flexibleSpace: SafeArea(
+          bottom: false,
+          child: SizedBox(
+            height: kToolbarHeight,
+            child: Stack(
+              children: const [
+                Positioned(
+                  left: 12,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                    child: NextPostTimer(compact: true, showBackground: false),
+                  ),
+                ),
+                Center(
+                  child: Text(
+                    'PeerReal.',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
 
       // Camera-Button
@@ -268,9 +293,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Column(
         children: [
-          const NextPostTimer(),
-          const SizedBox(height: 8),
-
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: CupertinoSlidingSegmentedControl<int>(
@@ -332,7 +354,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (to != null && to != me) friendIds.add(to);
                 }
 
-                // UPDATED: Filter by current daily window
                 return DqlBuilderService(
                   ditto: _ditto!,
                   query: '''
