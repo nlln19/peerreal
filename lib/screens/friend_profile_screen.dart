@@ -87,6 +87,76 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
     super.dispose();
   }
 
+  
+  Widget _buildFriendshipInlineAction(String peerId, String displayName) {
+    final me = DittoService.instance.activeUserId;
+    if (peerId == me) return const SizedBox.shrink();
+
+    return FutureBuilder<String>(
+      future: DittoService.instance.getFriendshipStatusWith(peerId),
+      builder: (context, snap) {
+        final status = snap.data;
+
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation(Colors.white54),
+            ),
+          );
+        }
+
+        if (status == 'accepted') {
+          return const Padding(
+            padding: EdgeInsets.only(top: 2),
+            child: Text(
+              'Friends',
+              style: TextStyle(
+                color: Colors.white38,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          );
+        } else if (status == 'pending') {
+          return const Padding(
+            padding: EdgeInsets.only(top: 2),
+            child: Text(
+              'Requested',
+              style: TextStyle(
+                color: Colors.white38,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          );
+        }
+
+        return IconButton(
+          icon: const Icon(
+            Icons.person_add_alt_1,
+            color: Colors.greenAccent,
+          ),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
+          visualDensity: VisualDensity.compact,
+          onPressed: () async {
+            await DittoService.instance.sendFriendRequest(peerId);
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Friend request sent to $displayName')),
+              );
+            }
+            if (mounted) setState(() {});
+          },
+        );
+      },
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
     final name = _displayName ?? 'Loading…';
@@ -118,16 +188,26 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                       : null,
                 ),
                 const SizedBox(width: 16),
-                Column(
+                Expanded(
+                  child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      name,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            name,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        _buildFriendshipInlineAction(widget.peerId, name),
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -139,11 +219,12 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                     ),
                   ],
                 ),
+                ),
               ],
             ),
             const SizedBox(height: 24),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _ProfileStat(
                   label: 'Moments',
@@ -153,7 +234,6 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                   label: 'Friends',
                   value: _friendsCount?.toString() ?? '–',
                 ),
-                const _ProfileStat(label: 'Streak', value: '0'), // TODO:
               ],
             ),
             const SizedBox(height: 24),
