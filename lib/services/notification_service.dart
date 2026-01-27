@@ -17,15 +17,12 @@ class NotificationService {
   Future<void> init() async {
     if (_initialized) return;
 
-    // Initialize timezone
     tz.initializeTimeZones();
 
-    // Android initialization
     const androidSettings = AndroidInitializationSettings(
       '@mipmap/ic_launcher',
     );
 
-    // iOS initialization
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
@@ -42,8 +39,24 @@ class NotificationService {
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
 
+    final android = _notifications
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+
+    if (android != null) {
+      const channel = AndroidNotificationChannel(
+        'daily_reminder',
+        'Daily Reminder',
+        description: 'Daily reminder to capture your moment',
+        importance: Importance.high,
+      );
+      await android.createNotificationChannel(channel);
+
+      await android.requestNotificationsPermission();
+    }
+
     _initialized = true;
-    logger.i('🔔 Notification service initialized');
   }
 
   Future<void> requestPermissions() async {
