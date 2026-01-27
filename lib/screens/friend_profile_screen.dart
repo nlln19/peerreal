@@ -224,7 +224,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
             ),
             const SizedBox(height: 24),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _ProfileStat(
                   label: 'Moments',
@@ -234,7 +234,6 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                   label: 'Friends',
                   value: _friendsCount?.toString() ?? '–',
                 ),
-                const _ProfileStat(label: 'Streak', value: '0'), // TODO:
               ],
             ),
             const SizedBox(height: 24),

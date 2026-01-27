@@ -227,7 +227,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return AlertDialog(
           title: const Text('Delete account'),
           content: const Text(
-            'This will delete your profile, friendships and all your reals.\n\n'
+            'This will delete your Profile, Friendships and all your Reals.\n\n'
             'Are you sure?',
           ),
           actions: [
@@ -253,7 +253,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          ok ? 'Account deleted on this device' : 'Failed to delete account',
+          ok ? 'Account deleted' : 'Failed to delete account',
         ),
       ),
     );
@@ -344,7 +344,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         content: Text(
           service.isLoggedIn
               ? 'Profile picture deleted'
-              : 'Profile picture removed on this device',
+              : 'Profile picture removed',
         ),
       ),
     );
@@ -432,7 +432,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               style: TextStyle(color: Colors.redAccent),
             ),
             subtitle: const Text(
-              'Remove your profile, friendships and Reals on this device',
+              'Remove your Profile, Friendships and Reals',
               style: TextStyle(color: Colors.white54, fontSize: 12),
             ),
             onTap: _confirmDeleteAccount,

@@ -335,14 +335,11 @@ class _ProfileStatsRow extends StatelessWidget {
           builder: (context, friendsResult) {
             final friendsCount = friendsResult.items.length;
 
-            final streakCount = 0; //TODO:
-
             return Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _ProfileStat(label: 'Moments', value: momentsCount.toString()),
                 _ProfileStat(label: 'Friends', value: friendsCount.toString()),
-                _ProfileStat(label: 'Streak', value: streakCount.toString()),
               ],
             );
           },
