@@ -106,7 +106,7 @@ class NotificationService {
       final now = DateTime.now();
       final tomorrow = DateTime(now.year, now.month, now.day + 1);
 
-      final scheduledTime = DateTime(now.year, now.month, now.day, 14, 50);
+      final scheduledTime = DateTime(now.year, now.month, now.day, 15, 0);
 
       /*final scheduledTime = DateTime(
         tomorrow.year,
