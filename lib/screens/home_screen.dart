@@ -3,7 +3,6 @@ import 'package:ditto_live/ditto_live.dart';
 import 'package:flutter/cupertino.dart';
 import 'dart:typed_data';
 
-import '../services/daily_window_service.dart';
 import '../widgets/next_post_timer.dart';
 import 'package:flutter/material.dart';
 import '../services/dql_builder_service.dart';
@@ -29,7 +28,6 @@ class _HomeScreenState extends State<HomeScreen> {
   int _feedFilter = 0; // 0 = All, 1 = Friends
   String? _currentWindowId;
   Uint8List? _profileAvatarBytes;
-  Timer? _windowCheckTimer;
 
   @override
   void initState() {
@@ -43,34 +41,6 @@ class _HomeScreenState extends State<HomeScreen> {
     logger.i('⏰ Starting window checker timer (10 sec for testing)...');
 
     // Check every 10 seconds for testing (change to 1 minute for production)
-    _windowCheckTimer = Timer.periodic(const Duration(seconds: 10), (
-      timer,
-    ) async {
-      logger.i('⏰ Timer tick #${timer.tick} - checking for window change...');
-
-      // Check if we should start a new window
-      final shouldStart = await DailyWindowService.instance
-          .shouldStartNewWindow();
-
-      if (shouldStart) {
-        logger.i('🔄 Should start new window! Triggering...');
-        await DailyWindowService.instance.startNewWindow();
-
-        // Reload the window ID
-        final newWindowId = await DittoService.instance
-            .getCurrentDailyWindowId();
-        if (mounted && newWindowId != _currentWindowId) {
-          setState(() {
-            _currentWindowId = newWindowId;
-          });
-        }
-      } else {
-        // Just log current window
-        final currentWindowId = await DittoService.instance
-            .getCurrentDailyWindowId();
-        logger.i('⏸️ Window unchanged: $currentWindowId');
-      }
-    });
 
     logger.i('✅ Window checker timer started');
   }
@@ -103,27 +73,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     bytes ??= await ProfileAvatarService.loadForPeer(me);
     return bytes;
-  }
-
-  void _startAvatarObserver() {
-    final service = DittoService.instance;
-    if (!service.isLoggedIn) return;
-
-    final me = service.activeUserId;
-
-    try {
-      service.ditto.store.registerObserver(
-        '''
-        SELECT avatar FROM profiles
-        WHERE peerId = :id
-        ORDER BY createdAt DESC
-        LIMIT 1
-        ''',
-        arguments: {'id': me},
-      );
-    } catch (e) {
-      logger.e('❌ Failed to start avatar observer: $e');
-    }
   }
 
   Future<void> _openCamera() async {
