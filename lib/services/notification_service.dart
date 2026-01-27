@@ -89,17 +89,19 @@ class NotificationService {
       // Cancel any existing daily reminder
       await _notifications.cancel(999);
 
-      // FIXED TIME: Always schedule for 2:00 PM (14:00) tomorrow
+      // FIXED TIME: Always schedule for 10:00 tomorrow
       final now = DateTime.now();
       final tomorrow = DateTime(now.year, now.month, now.day + 1);
 
-      final scheduledTime = DateTime(
+      final scheduledTime = DateTime(now.year, now.month, now.day, 14, 50);
+
+      /*final scheduledTime = DateTime(
         tomorrow.year,
         tomorrow.month,
         tomorrow.day,
-        10, // Fixed hour: 10 PM
+        10, // Fixed hour: 10 AM
         0, // Fixed minute: 00
-      );
+      );*/
 
       final tzScheduledTime = tz.TZDateTime.from(scheduledTime, tz.local);
 
@@ -125,8 +127,8 @@ class NotificationService {
 
       await _notifications.zonedSchedule(
         999, // Fixed ID for daily reminder
-        '⏰ Time to be real!',
-        'Capture your moment now',
+        'WAKEY WAKEY TIME TO PEER REAL',
+        'Capture your moment now mf 🗣️🗣️🗣️',
         tzScheduledTime,
         details,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
