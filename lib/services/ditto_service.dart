@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:PeerReal/services/password_hasher.dart';
 import 'package:ditto_live/ditto_live.dart';
@@ -54,8 +53,6 @@ class DittoService {
   String? get currentUserId => _currentUserId;
   bool get isLoggedIn => _currentUserId != null;
 
-  /// Use this everywhere for authored content (posts/friends/etc.).
-  /// If logged out, falls back to device id.
   String get activeUserId => _currentUserId ?? localPeerId;
 
   String? _displayName;
@@ -116,7 +113,6 @@ class DittoService {
     _currentUserId = null;
     _displayName = null;
 
-    // Cleanup: remove legacy device-only profile docs that were created by old code.
     final d = _ditto;
     if (d != null) {
       try {
@@ -128,7 +124,7 @@ class DittoService {
           arguments: {'id': localPeerId},
         );
       } catch (_) {
-        // Ignore (older DQL versions might not support IS NULL, etc.)
+        // Ignore
       }
     }
   }
@@ -393,14 +389,12 @@ class DittoService {
     }
   }
 
-  /// IMPORTANT: This must not create new profiles with peerId == localPeerId (old bug source).
-  /// It only updates the logged-in user's profile displayName.
   Future<bool> setDisplayName(String displayName) async {
     final d = _ditto;
     if (d == null) return false;
 
     final userId = _currentUserId;
-    if (userId == null) return false; // must be logged in
+    if (userId == null) return false;
 
     final trimmed = displayName.trim();
     if (trimmed.isEmpty) return false;
@@ -420,8 +414,6 @@ class DittoService {
     return true;
   }
 
-  /// Ensures the logged-in account has a profile doc and updates its displayName.
-  /// (No more device profiles.)
   Future<void> ensureProfile({required String displayName}) async {
     final d = _ditto;
     if (d == null) return;
@@ -494,10 +486,6 @@ class DittoService {
 
   // ---------------- PROFILE AVATAR ----------------
 
-  /// Uploads and syncs the current user's profile avatar using a Ditto ATTACHMENT
-  /// stored on the user's `profiles` document under the `avatar` field.
-  ///
-  /// Requires a logged-in user (i.e., `_currentUserId != null`).
   Future<void> setCurrentUserAvatar(Uint8List avatarBytes) async {
     final d = _ditto;
     if (d == null) {
@@ -547,16 +535,9 @@ class DittoService {
         arguments: {'avatar': attachment, 'ts': now, 'id': docId},
       );
     }
-
-    // Bust cache for this user so UI fetches the new one.
     _avatarCache.remove(userId);
   }
 
-  /// Fetches (and lazily downloads) a peer's current avatar bytes from Ditto.
-  /// Returns null if the peer has no avatar set.
-
-  /// Deletes the currently logged-in user's avatar from their `profiles` document.
-  /// This propagates to other peers (the `avatar` field becomes NULL).
   Future<void> deleteCurrentUserAvatar() async {
     final d = _ditto;
     if (d == null) {
@@ -1272,6 +1253,7 @@ Map<String, dynamic> getReactionCountsFromDoc(Map<String, dynamic> doc) {
     }
   }
 
+  // ignore: strict_top_level_inference
   Future<void> acceptFriendRequest(friendshipId) async {
     final d = _ditto;
     if (d == null) return;
@@ -1290,6 +1272,7 @@ Map<String, dynamic> getReactionCountsFromDoc(Map<String, dynamic> doc) {
     );
   }
 
+  // ignore: strict_top_level_inference
   Future<void> declineFriendRequest(friendshipId) async {
     final d = _ditto;
     if (d == null) return;

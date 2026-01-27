@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 
 import '../services/dql_builder_service.dart';
 import '../services/ditto_service.dart';
+import '../widgets/count_badge.dart';
 
 class FriendsScreen extends StatefulWidget {
   const FriendsScreen({super.key});
@@ -64,30 +65,40 @@ class _FriendsScreenState extends State<FriendsScreen> {
         elevation: 0,
         title: Text(
           "Friends",
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
       body: Column(
         children: [
           const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _FriendsTabButton(
-                label: 'Friends',
-                selected: _tabIndex == 0,
-                onTap: () => setState(() => _tabIndex = 0),
-              ),
-              const SizedBox(width: 8),
-              _FriendsTabButton(
-                label: 'Requests',
-                selected: _tabIndex == 1,
-                onTap: () => setState(() => _tabIndex = 1),
-              ),
-            ],
+          DqlBuilderService(
+            ditto: ditto,
+            query: '''
+              SELECT * FROM friendships
+              WHERE toPeerId = :me AND status = 'pending'
+            ''',
+            queryArgs: {'me': me},
+            builder: (context, result) {
+              final pendingCount = result.items.length;
+
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _FriendsTabButton(
+                    label: 'Friends',
+                    selected: _tabIndex == 0,
+                    onTap: () => setState(() => _tabIndex = 0),
+                  ),
+                  const SizedBox(width: 8),
+                  _FriendsTabButton(
+                    label: 'Requests',
+                    selected: _tabIndex == 1,
+                    badgeCount: pendingCount,
+                    onTap: () => setState(() => _tabIndex = 1),
+                  ),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 16),
           Padding(
@@ -119,8 +130,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
           Expanded(
             child: _tabIndex == 0
                 ? (_searchTerm.isEmpty
-                    ? _buildFriendsList(ditto, me)
-                    : _buildProfileSearchResults(ditto, me))
+                      ? _buildFriendsList(ditto, me)
+                      : _buildProfileSearchResults(ditto, me))
                 : _buildRequestsList(ditto, me),
           ),
         ],
@@ -287,7 +298,9 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       await DittoService.instance.sendFriendRequest(peerId);
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Friend request sent to $name')),
+                          SnackBar(
+                            content: Text('Friend request sent to $name'),
+                          ),
                         );
                       }
                       if (mounted) setState(() {});
@@ -390,7 +403,9 @@ class _FriendsScreenState extends State<FriendsScreen> {
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text('Declined request from $name'),
+                                      content: Text(
+                                        'Declined request from $name',
+                                      ),
                                     ),
                                   );
                                 }
@@ -411,7 +426,9 @@ class _FriendsScreenState extends State<FriendsScreen> {
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text('You are now friends with $name'),
+                                      content: Text(
+                                        'You are now friends with $name',
+                                      ),
                                     ),
                                   );
                                 }
@@ -433,11 +450,13 @@ class _FriendsTabButton extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
+  final int badgeCount;
 
   const _FriendsTabButton({
     required this.label,
     required this.selected,
     required this.onTap,
+    this.badgeCount = 0,
   });
 
   @override
@@ -445,23 +464,46 @@ class _FriendsTabButton extends StatelessWidget {
     final bgColor = selected ? Colors.white : const Color(0xFF11111A);
     final textColor = selected ? Colors.black : Colors.white70;
 
+    if (badgeCount > 0) {
+      Positioned(
+        top: -6,
+        right: -6,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: CountBadge(count: badgeCount),
+        ),
+      );
+    }
+
     return GestureDetector(
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: textColor,
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: textColor,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
           ),
-        ),
+          if (badgeCount > 0)
+            Positioned(
+              top: -6,
+              right: -6,
+              child: CountBadge(count: badgeCount),
+            ),
+        ],
       ),
     );
   }

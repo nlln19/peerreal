@@ -1,6 +1,5 @@
 // ignore_for_file: unused_field
 
-import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
@@ -97,7 +96,7 @@ class _MobileCameraScreenState extends State<MobileCameraScreen> {
 
     final controller = CameraController(
       camera,
-      ResolutionPreset.medium, // medium = 720p
+      ResolutionPreset.medium,
       enableAudio: false,
     );
 

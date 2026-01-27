@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'dart:typed_data';
 
 import '../widgets/next_post_timer.dart';
+import '../widgets/count_badge.dart';
 import 'package:flutter/material.dart';
 import '../services/dql_builder_service.dart';
 import '../services/ditto_service.dart';
@@ -155,12 +156,42 @@ class _HomeScreenState extends State<HomeScreen> {
         automaticallyImplyLeading: false,
 
         actions: [
-          IconButton(
-            icon: const Icon(Icons.people_outline),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const FriendsScreen()),
+          DqlBuilderService(
+            ditto: _ditto!,
+            query: '''
+              SELECT * FROM friendships
+              WHERE toPeerId = :me AND status = 'pending'
+            ''',
+            queryArgs: {'me': me},
+            builder: (context, result) {
+              final pendingCount = result.items.length;
+
+              void goToFriends() {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const FriendsScreen()),
+                );
+              }
+
+              return Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.people_outline),
+                    onPressed: goToFriends,
+                  ),
+                  if (pendingCount > 0)
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior
+                            .opaque, // macht auch “leere” Fläche tappbar
+                        onTap: goToFriends,
+                        child: CountBadge(count: pendingCount),
+                      ),
+                    ),
+                ],
               );
             },
           ),
