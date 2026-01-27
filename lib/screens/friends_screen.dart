@@ -62,7 +62,13 @@ class _FriendsScreenState extends State<FriendsScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF05050A),
         elevation: 0,
-        title: const Text('Friends'),
+        title: Text(
+          "Friends",
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
       body: Column(
         children: [

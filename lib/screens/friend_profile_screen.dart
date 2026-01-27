@@ -56,7 +56,9 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
   }
 
   Future<void> _loadAvatar() async {
-    final bytes = await DittoService.instance.getAvatarBytesForPeer(widget.peerId);
+    final bytes = await DittoService.instance.getAvatarBytesForPeer(
+      widget.peerId,
+    );
     if (!mounted) return;
     setState(() => _avatarBytes = bytes);
   }
@@ -74,7 +76,9 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
         arguments: {'id': widget.peerId},
       );
 
-      _avatarObserverSub = _avatarObserver?.changes.listen((_) => _loadAvatar());
+      _avatarObserverSub = _avatarObserver?.changes.listen(
+        (_) => _loadAvatar(),
+      );
     } catch (_) {
       // ignore
     }
@@ -87,7 +91,6 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
     super.dispose();
   }
 
-  
   Widget _buildFriendshipInlineAction(String peerId, String displayName) {
     final me = DittoService.instance.activeUserId;
     if (peerId == me) return const SizedBox.shrink();
@@ -135,10 +138,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
         }
 
         return IconButton(
-          icon: const Icon(
-            Icons.person_add_alt_1,
-            color: Colors.greenAccent,
-          ),
+          icon: const Icon(Icons.person_add_alt_1, color: Colors.greenAccent),
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(),
           visualDensity: VisualDensity.compact,
@@ -156,11 +156,12 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     final name = _displayName ?? 'Loading…';
-    final short = widget.peerId.length >= 8 ? widget.peerId.substring(0, 8) : widget.peerId;
+    final short = widget.peerId.length >= 8
+        ? widget.peerId.substring(0, 8)
+        : widget.peerId;
     final handle = '@$short';
 
     return Scaffold(
@@ -168,7 +169,13 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF05050A),
         elevation: 0,
-        title: Text("$name's Profile"),
+        title: Text(
+          "$name's Profile",
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12),
@@ -180,45 +187,49 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                 CircleAvatar(
                   radius: 32,
                   backgroundColor: Colors.white12,
-                  backgroundImage:
-                      _avatarBytes != null ? MemoryImage(_avatarBytes!) : null,
+                  backgroundImage: _avatarBytes != null
+                      ? MemoryImage(_avatarBytes!)
+                      : null,
                   child: _avatarBytes == null
-                      ? const Icon(Icons.person,
-                          size: 32, color: Colors.white70)
+                      ? const Icon(
+                          Icons.person,
+                          size: 32,
+                          color: Colors.white70,
+                        )
                       : null,
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            name,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              name,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        _buildFriendshipInlineAction(widget.peerId, name),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      handle,
-                      style: const TextStyle(
-                        color: Colors.white54,
-                        fontSize: 13,
+                          const SizedBox(width: 8),
+                          _buildFriendshipInlineAction(widget.peerId, name),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
+                      const SizedBox(height: 4),
+                      Text(
+                        handle,
+                        style: const TextStyle(
+                          color: Colors.white54,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -265,7 +276,10 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                       child: Text(
                         "$name has no PeerReal moments yet😔",
                         textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white38, fontSize: 13),
+                        style: const TextStyle(
+                          color: Colors.white38,
+                          fontSize: 13,
+                        ),
                       ),
                     );
                   }
