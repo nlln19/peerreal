@@ -106,15 +106,13 @@ class NotificationService {
       final now = DateTime.now();
       final tomorrow = DateTime(now.year, now.month, now.day + 1);
 
-      final scheduledTime = DateTime(now.year, now.month, now.day, 15, 0);
-
-      /*final scheduledTime = DateTime(
+      final scheduledTime = DateTime(
         tomorrow.year,
         tomorrow.month,
         tomorrow.day,
         10, // Fixed hour: 10 AM
         0, // Fixed minute: 00
-      );*/
+      );
 
       final tzScheduledTime = tz.TZDateTime.from(scheduledTime, tz.local);
 
