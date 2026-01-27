@@ -53,8 +53,8 @@ class DailyWindowService {
       DateTime.now().millisecondsSinceEpoch,
     );
 
-    // Increment the counter for a new window
-    await DittoService.instance.incrementWindowCounter();
+    // Update Ditto's window tracking (date-based, automatic)
+    await DittoService.instance.checkAndUpdateDailyWindow();
 
     // Schedule the next notification
     await NotificationService.instance.scheduleDailyPostReminder();

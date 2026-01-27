@@ -298,31 +298,51 @@ class DittoService {
 
   // ---------------- DAILY WINDOW LOGIC ----------------
 
-  Future<String> getCurrentDailyWindowId() async {
-    if (_currentDailyWindowId.isEmpty) {
-      final prefs = await SharedPreferences.getInstance();
-      final counter = prefs.getInt('window_counter') ?? 1;
-      _currentDailyWindowId = 'window-$counter';
-      logger.i(
-        '📅 Current window ID: $_currentDailyWindowId (counter: $counter)',
-      );
+  /// Generate window ID based on date and notification time (10 AM)
+  /// Before 10 AM today = yesterday's date
+  /// After 10 AM today = today's date
+  String _generateDailyWindowId() {
+    final now = DateTime.now();
+    const notificationHour = 10; // 10 AM fixed time
+
+    // If before 10 AM today, we're still in yesterday's window
+    DateTime windowDate;
+    if (now.hour < notificationHour) {
+      windowDate = now.subtract(const Duration(days: 1));
+    } else {
+      windowDate = now;
     }
+
+    // Format: YYYY-MM-DD
+    final windowId =
+        '${windowDate.year}-${windowDate.month.toString().padLeft(2, '0')}-${windowDate.day.toString().padLeft(2, '0')}';
+    logger.i(
+      '🏷️ Generated window ID: $windowId (current time: ${now.hour}:${now.minute})',
+    );
+    return windowId;
+  }
+
+  Future<String> getCurrentDailyWindowId() async {
+    final newWindowId = _generateDailyWindowId();
+
+    // Update if changed
+    if (_currentDailyWindowId != newWindowId) {
+      logger.i('📅 Window changed: $_currentDailyWindowId → $newWindowId');
+      _currentDailyWindowId = newWindowId;
+    }
+
     return _currentDailyWindowId;
   }
 
-  Future<void> incrementWindowCounter() async {
-    final prefs = await SharedPreferences.getInstance();
-    int currentCounter = prefs.getInt('window_counter') ?? 1;
-    int newCounter = currentCounter + 1;
+  Future<void> checkAndUpdateDailyWindow() async {
+    final newWindowId = _generateDailyWindowId();
 
-    await prefs.setInt('window_counter', newCounter);
-
-    final oldWindowId = _currentDailyWindowId;
-    _currentDailyWindowId = 'window-$newCounter';
-
-    logger.i(
-      '📅 ✅ Window incremented: $oldWindowId → $_currentDailyWindowId (counter: $currentCounter → $newCounter)',
-    );
+    if (_currentDailyWindowId != newWindowId) {
+      _currentDailyWindowId = newWindowId;
+      logger.i('📅 ✅ New daily window: $newWindowId');
+    } else {
+      logger.i('📅 ⏸️ Still in same window: $_currentDailyWindowId');
+    }
   }
 
   // ---------------- PROFILE / USERNAME ----------------
