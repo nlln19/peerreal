@@ -151,7 +151,7 @@ class DittoService {
     );
 
     final ditto = await Ditto.open(identity: identity);
-    logger.i('✅ Ditto opened with appId=$appId');
+    logger.i('Ditto opened with appId=$appId');
 
     ditto.updateTransportConfig((config) {
       config.connect.webSocketUrls.add(websocketUrl);
@@ -163,7 +163,6 @@ class DittoService {
     await ditto.store.execute("ALTER SYSTEM SET DQL_STRICT_MODE = false");
 
     ditto.startSync();
-    logger.i('🚀 Ditto sync started');
 
     ditto.sync.registerSubscription('SELECT * FROM reals');
     ditto.sync.registerSubscription('SELECT * FROM profiles');
@@ -211,12 +210,9 @@ class DittoService {
             final docId = item.value['_id'] as String;
             _seenPostIds.add(docId);
           }
-          logger.i(
-            '👂 Loaded ${_seenPostIds.length} existing posts to skip notifications',
-          );
         })
         .catchError((e) {
-          logger.e('❌ Error loading existing posts: $e');
+          logger.e('Error loading existing posts: $e');
         });
 
     _postObserver = d.store.registerObserver(
@@ -250,17 +246,14 @@ class DittoService {
             } catch (_) {
               // NotificationService may not expose this method on all platforms.
             }
-            logger.i('🔔 Notified about post from $authorName');
           } catch (e) {
-            logger.e('❌ Error showing notification: $e');
+            logger.e('Error showing notification: $e');
           }
         }
 
         _seenPostIds.add(postId);
       }
     });
-
-    logger.i('👂 Started listening for new posts');
   }
 
   Future<void> _loadOwnProfileDisplayName() async {
@@ -284,11 +277,11 @@ class DittoService {
         if (name != null && name.isNotEmpty) {
           _displayName = name;
           _profileNameCache[activeUserId] = name;
-          logger.i('👤 Loaded existing profile name: $name');
+          logger.i('Loaded existing profile name: $name');
         }
       }
     } catch (e) {
-      logger.e('❌ Error loading own profile: $e');
+      logger.e('Error loading own profile: $e');
     }
   }
 
@@ -297,31 +290,37 @@ class DittoService {
   /// Generate window ID based on date and notification time (10 AM)
   /// Before 10 AM today = yesterday's date
   /// After 10 AM today = today's date
-  String _generateDailyWindowId() {
-    final now = DateTime.now();
-    const notificationHour = 10; // 10 AM fixed time
+    /// Generate a daily window id based on the local date and the configured reminder time.
+  ///
+  /// If "now" is before today's reminder time, the window date is considered **yesterday**
+  /// (so late posts still belong to the previous round).
+  String _generateDailyWindowIdAt(DateTime now, int hour, int minute) {
+    final todayStart = DateTime(now.year, now.month, now.day, hour, minute);
+    final windowDate = now.isBefore(todayStart)
+        ? todayStart.subtract(const Duration(days: 1))
+        : todayStart;
 
-    // If before 10 AM today, we're still in yesterday's window
-    DateTime windowDate;
-    if (now.hour < notificationHour) {
-      windowDate = now.subtract(const Duration(days: 1));
-    } else {
-      windowDate = now;
-    }
-
-    // Format: YYYY-MM-DD
     final windowId =
         '${windowDate.year}-${windowDate.month.toString().padLeft(2, '0')}-${windowDate.day.toString().padLeft(2, '0')}';
+
     logger.i(
-      '🏷️ Generated window ID: $windowId (current time: ${now.hour}:${now.minute})',
+      'Generated window ID: $windowId (start: ${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}, now: ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')})',
     );
+
     return windowId;
   }
 
-  Future<String> getCurrentDailyWindowId() async {
-    final newWindowId = _generateDailyWindowId();
+    Future<String> getCurrentDailyWindowId() async {
+    final now = DateTime.now();
 
-    // Update if changed
+    // Keep window id aligned with the locally scheduled reminder time (defaults to 10:00).
+    final scheduled =
+        await NotificationService.instance.getScheduledNotificationTime();
+    final hour = scheduled?.hour ?? 10;
+    final minute = scheduled?.minute ?? 0;
+
+    final newWindowId = _generateDailyWindowIdAt(now, hour, minute);
+
     if (_currentDailyWindowId != newWindowId) {
       logger.i('📅 Window changed: $_currentDailyWindowId → $newWindowId');
       _currentDailyWindowId = newWindowId;
@@ -330,14 +329,21 @@ class DittoService {
     return _currentDailyWindowId;
   }
 
-  Future<void> checkAndUpdateDailyWindow() async {
-    final newWindowId = _generateDailyWindowId();
+    Future<void> checkAndUpdateDailyWindow() async {
+    final now = DateTime.now();
+
+    final scheduled =
+        await NotificationService.instance.getScheduledNotificationTime();
+    final hour = scheduled?.hour ?? 10;
+    final minute = scheduled?.minute ?? 0;
+
+    final newWindowId = _generateDailyWindowIdAt(now, hour, minute);
 
     if (_currentDailyWindowId != newWindowId) {
       _currentDailyWindowId = newWindowId;
-      logger.i('📅 ✅ New daily window: $newWindowId');
+      logger.i('New daily window: $newWindowId');
     } else {
-      logger.i('📅 ⏸️ Still in same window: $_currentDailyWindowId');
+      logger.i('Still in same window: $_currentDailyWindowId');
     }
   }
 
@@ -358,7 +364,7 @@ class DittoService {
     }
 
     _localPeerIdInitialized = true;
-    logger.i('🆔 localPeerId = $localPeerId');
+    logger.i('localPeerId = $localPeerId');
   }
 
   Future<bool> isDisplayNameAvailable(String displayName) async {
@@ -381,10 +387,10 @@ class DittoService {
       );
 
       final available = res.items.isEmpty;
-      logger.i('🔎 Name "$trimmed" available: $available');
+      logger.i('Name "$trimmed" available: $available');
       return available;
     } catch (e) {
-      logger.e('❌ Error in isDisplayNameAvailable: $e');
+      logger.e('Error in isDisplayNameAvailable: $e');
       return false;
     }
   }
@@ -400,7 +406,7 @@ class DittoService {
     if (trimmed.isEmpty) return false;
 
     if (!await isDisplayNameAvailable(trimmed)) {
-      logger.w('🚫 DisplayName "$trimmed" already taken');
+      logger.w('DisplayName "$trimmed" already taken');
       return false;
     }
 
@@ -410,7 +416,7 @@ class DittoService {
     _profileNameCache[userId] = trimmed;
     await _saveSession(userId: userId, displayName: trimmed);
 
-    logger.i('✅ DisplayName set to "$trimmed" for $userId');
+    logger.i('DisplayName set to "$trimmed" for $userId');
     return true;
   }
 
@@ -479,7 +485,7 @@ class DittoService {
       }
       return peerId;
     } catch (e) {
-      logger.e('❌ Error in getDisplayNameForPeer: $e');
+      logger.e('Error in getDisplayNameForPeer: $e');
       return peerId;
     }
   }
@@ -612,7 +618,7 @@ class DittoService {
       _avatarCache[peerId] = _AvatarCacheEntry(tokenId, bytes);
       return bytes;
     } catch (e) {
-      logger.e('❌ Error in getAvatarBytesForPeer: $e');
+      logger.e('Error in getAvatarBytesForPeer: $e');
       return null;
     }
   }
@@ -913,17 +919,12 @@ class DittoService {
   }) async {
     final d = _ditto;
     if (d == null) {
-      logger.e('❌ Ditto is null in addImageFromBytes');
+      logger.e('Ditto is null in addImageFromBytes');
       return;
     }
 
     try {
-      logger.i('📸 Saving image: ${imageBytes.length} bytes');
-
       final attachment = await d.store.newAttachment(imageBytes);
-      logger.i(
-        '✅ Attachment created. id=${attachment.id}, len=${attachment.len}',
-      );
 
       final dailyWindowId = await getCurrentDailyWindowId();
 
@@ -949,9 +950,9 @@ class DittoService {
         arguments: {"newDocument": newDocument},
       );
 
-      logger.i('✅ Document saved to Ditto with window ID: $dailyWindowId');
+      logger.i('Document saved to Ditto with window ID: $dailyWindowId');
     } catch (e) {
-      logger.e('❌ Error saving image: $e');
+      logger.e('Error saving image: $e');
     }
   }
 
@@ -962,22 +963,13 @@ class DittoService {
   }) async {
     final d = _ditto;
     if (d == null) {
-      logger.e('❌ Ditto ist null in addDualImageFromBytes');
+      logger.e('Ditto is null in addDualImageFromBytes');
       return;
     }
 
     try {
-      logger.i(
-        '📸 Saving dual image: main=${mainBytes.length}, selfie=${selfieBytes.length} bytes',
-      );
-
       final mainAttachment = await d.store.newAttachment(mainBytes);
       final selfieAttachment = await d.store.newAttachment(selfieBytes);
-
-      logger.i(
-        '✅ Attachments created: main=${mainAttachment.id}, selfie=${selfieAttachment.id}',
-      );
-
       final dailyWindowId = await getCurrentDailyWindowId();
 
       final newDocument = {
@@ -1004,9 +996,9 @@ class DittoService {
         arguments: {"newDocument": newDocument},
       );
 
-      logger.i('✅ Dual Image saved to Ditto with window ID: $dailyWindowId');
+      logger.i('Dual Image saved to Ditto with window ID: $dailyWindowId');
     } catch (e) {
-      logger.e('❌ Error saving dual image: $e');
+      logger.e('Error saving dual image: $e');
     }
   }
 
@@ -1016,7 +1008,7 @@ class DittoService {
     try {
       final d = _ditto;
       if (d == null) {
-        logger.e('❌ Ditto is null in _loadAttachmentFromToken');
+        logger.e('Ditto is null in _loadAttachmentFromToken');
         return null;
       }
 
@@ -1049,7 +1041,7 @@ class DittoService {
 
       return result;
     } catch (e) {
-      logger.e('❌ Error in _loadAttachmentFromToken: $e');
+      logger.e('Error in _loadAttachmentFromToken: $e');
       return null;
     }
   }
@@ -1086,7 +1078,7 @@ Future<void> toggleReactionOnPost({
     );
 
     if (res.items.isEmpty) {
-      logger.w('⚠️ Post $postId not found');
+      logger.w('Post $postId not found');
       return;
     }
 
@@ -1107,7 +1099,6 @@ Future<void> toggleReactionOnPost({
         // User already gave thumbs up -> toggle off
         currentThumbsUp = (currentThumbsUp - 1).clamp(0, 999999);
         thumbsUpList.remove(userId);
-        logger.i('👍 Thumbs up removed by $userId on post $postId');
       } else {
         // User hasn't given thumbs up yet
         currentThumbsUp++;
@@ -1118,7 +1109,6 @@ Future<void> toggleReactionOnPost({
           currentThumbsDown = (currentThumbsDown - 1).clamp(0, 999999);
           thumbsDownList.remove(userId);
         }
-        logger.i('👍 Thumbs up added by $userId on post $postId');
       }
 
       await d.store.execute(
@@ -1144,7 +1134,6 @@ Future<void> toggleReactionOnPost({
         // User already gave thumbs down -> toggle off
         currentThumbsDown = (currentThumbsDown - 1).clamp(0, 999999);
         thumbsDownList.remove(userId);
-        logger.i('👎 Thumbs down removed by $userId on post $postId');
       } else {
         // User hasn't given thumbs down yet
         currentThumbsDown++;
@@ -1155,7 +1144,6 @@ Future<void> toggleReactionOnPost({
           currentThumbsUp = (currentThumbsUp - 1).clamp(0, 999999);
           thumbsUpList.remove(userId);
         }
-        logger.i('👎 Thumbs down added by $userId on post $postId');
       }
 
       await d.store.execute(
@@ -1177,7 +1165,7 @@ Future<void> toggleReactionOnPost({
       );
     }
   } catch (e) {
-    logger.e('❌ Error toggling reaction: $e');
+    logger.e('Error toggling reaction: $e');
     rethrow;
   }
 }
@@ -1311,7 +1299,7 @@ Map<String, dynamic> getReactionCountsFromDoc(Map<String, dynamic> doc) {
 
       return res.items.first.value['status'] as String? ?? 'pending';
     } catch (e) {
-      logger.e('❌ Error in getFriendshipStatusWith: $e');
+      logger.e('Error in getFriendshipStatusWith: $e');
       return 'none';
     }
   }
@@ -1330,7 +1318,7 @@ Map<String, dynamic> getReactionCountsFromDoc(Map<String, dynamic> doc) {
       );
       return res.items.length;
     } catch (e) {
-      logger.e('❌ Error in countRealsForPeer: $e');
+      logger.e('Error in countRealsForPeer: $e');
       return 0;
     }
   }
@@ -1350,7 +1338,7 @@ Map<String, dynamic> getReactionCountsFromDoc(Map<String, dynamic> doc) {
       );
       return res.items.length;
     } catch (e) {
-      logger.e('❌ Error in countFriendsForPeer: $e');
+      logger.e('Error in countFriendsForPeer: $e');
       return 0;
     }
   }
@@ -1399,10 +1387,9 @@ Map<String, dynamic> getReactionCountsFromDoc(Map<String, dynamic> doc) {
       _displayName = null;
       _profileNameCache.clear();
 
-      logger.i('🗑️ Account & data deleted for $id');
       return true;
     } catch (e) {
-      logger.e('❌ Error in deleteAccountAndData: $e');
+      logger.e('Error in deleteAccountAndData: $e');
       return false;
     }
   }

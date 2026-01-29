@@ -64,7 +64,6 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
   }
 
   void _startAvatarObserver() {
-    // Refresh when the profile doc changes (avatar token update / unset).
     try {
       _avatarObserver = DittoService.instance.ditto.store.registerObserver(
         '''
@@ -274,7 +273,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                   if (docs.isEmpty) {
                     return Center(
                       child: Text(
-                        "$name has no PeerReal moments yet😔",
+                        "$name has no reals yet.",
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: Colors.white38,

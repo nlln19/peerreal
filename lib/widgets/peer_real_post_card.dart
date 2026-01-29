@@ -62,7 +62,7 @@ class _PeerRealPostCardState extends State<PeerRealPostCard> {
         _authorName = name;
       });
     } catch (e) {
-      logger.e('❌ Error loading author name: $e');
+      logger.e('Error loading author name: $e');
     }
   }
 
@@ -75,7 +75,7 @@ class _PeerRealPostCardState extends State<PeerRealPostCard> {
         _authorAvatarBytes = bytes;
       });
     } catch (e) {
-      logger.e('❌ Error loading author avatar: $e');
+      logger.e('Error loading author avatar: $e');
     }
   }
 
@@ -93,7 +93,7 @@ class _PeerRealPostCardState extends State<PeerRealPostCard> {
         _loadAuthorAvatar();
       });
     } catch (e) {
-      logger.e('❌ Error starting avatar observer: $e');
+      logger.e('Error starting avatar observer: $e');
     }
   }
 
@@ -110,7 +110,7 @@ class _PeerRealPostCardState extends State<PeerRealPostCard> {
         _selfieData = selfie;
       });
     } catch (e) {
-      logger.e('❌ Error loading images in PeerRealPostCard: $e');
+      logger.e('Error loading images in PeerRealPostCard: $e');
     }
   }
 
@@ -130,7 +130,7 @@ Future<void> _showReactionPopup(BuildContext context, Offset position) async {
               reactionType: reactionType,
             );
           } catch (e) {
-            logger.e('❌ Error toggling reaction: $e');
+            logger.e('Error toggling reaction: $e');
           }
         },
       ),
@@ -147,7 +147,7 @@ Future<void> _showReactionPopup(BuildContext context, Offset position) async {
         reactionType: reactionType,
       );
     } catch (e) {
-      logger.e('❌ Error toggling reaction: $e');
+      logger.e('Error toggling reaction: $e');
     }
   }
 
@@ -299,7 +299,7 @@ Future<void> _showReactionPopup(BuildContext context, Offset position) async {
                                     fit: BoxFit.cover,
                                     errorBuilder: (context, error, stackTrace) {
                                       logger.e(
-                                        '❌ Main image decode error: $error',
+                                        'Main image decode error: $error',
                                       );
                                       return const Center(
                                         child: Icon(
@@ -335,7 +335,7 @@ Future<void> _showReactionPopup(BuildContext context, Offset position) async {
                                             errorBuilder:
                                                 (context, error, stackTrace) {
                                                   logger.e(
-                                                    '❌ Selfie decode error: $error',
+                                                    'Selfie decode error: $error',
                                                   );
                                                   return const ColoredBox(
                                                     color: Colors.black54,

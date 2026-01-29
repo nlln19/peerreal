@@ -19,18 +19,14 @@ class _FeedPhotoTileState extends State<FeedPhotoTile> {
   @override
   void initState() {
     super.initState();
-    logger.i('🖼️ Initializing ImageGridItem for: ${widget.doc['name']}');
     _loadImage();
   }
 
   Future<void> _loadImage() async {
-    logger.i('🔄 Loading image for: ${widget.doc['name']}');
-
     try {
       final imageData = await DittoService.instance.getAttachmentData(
         widget.doc,
       );
-      logger.i('📊 Image data result: ${imageData?.length} bytes');
 
       if (mounted) {
         setState(() {
@@ -38,16 +34,12 @@ class _FeedPhotoTileState extends State<FeedPhotoTile> {
         });
       }
     } catch (e) {
-      logger.e('❌ Error in _loadImage: $e');
+      logger.e('Error in _loadImage: $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    logger.i(
-      '🎨 Building ImageGridItem with data: ${_imageData?.length} bytes',
-    );
-
     return Container(
       color: _imageData != null ? Colors.green : Colors.red,
       child: _imageData != null && _imageData!.isNotEmpty
@@ -55,7 +47,7 @@ class _FeedPhotoTileState extends State<FeedPhotoTile> {
               _imageData!,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
-                logger.e('❌ Image decode error: $error');
+                logger.e('Image decode error: $error');
                 return const Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,

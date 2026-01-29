@@ -46,10 +46,10 @@ class _WebCameraScreenState extends State<WebCameraScreen> {
 
       await _initForStep1();
     } catch (e) {
-      logger.e('❌ WebCameraScreen: Fehler bei Kamera-Setup: $e');
+      logger.e('WebCameraScreen: Error during camera setup: $e');
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Kamera konnte nicht gestartet werden.\nFehler: $e';
+        _errorMessage = 'Camera could not be initialized.\nError: $e';
         _initializing = false;
       });
     }
@@ -112,7 +112,7 @@ class _WebCameraScreenState extends State<WebCameraScreen> {
       final XFile file = await controller.takePicture();
       final bytes = await file.readAsBytes();
       logger.i(
-        '📸 WebCameraScreen: Step $_step captured ${bytes.length} bytes',
+        'WebCameraScreen: Step $_step captured ${bytes.length} bytes',
       );
 
       if (!mounted) return;
@@ -131,7 +131,7 @@ class _WebCameraScreenState extends State<WebCameraScreen> {
         }
       }
     } catch (e) {
-      logger.e('❌ WebCameraScreen: Fehler beim Foto machen: $e');
+      logger.e('WebCameraScreen: Error taking picture: $e');
     }
   }
 

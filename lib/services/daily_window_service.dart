@@ -12,12 +12,12 @@ class DailyWindowService {
     final scheduledTime = await NotificationService.instance
         .getScheduledNotificationTime();
     if (scheduledTime == null) {
-      logger.i('📅 No scheduled time found');
+      logger.i('No scheduled time found');
       return false;
     }
 
     final now = DateTime.now();
-    logger.i('📅 Checking: now=$now, scheduled=$scheduledTime');
+    logger.i('Checking: now=$now, scheduled=$scheduledTime');
 
     // Check if the scheduled time has passed
     if (now.isAfter(scheduledTime)) {
@@ -25,19 +25,19 @@ class DailyWindowService {
       final lastWindowStart = prefs.getInt('last_window_start');
 
       logger.i(
-        '📅 Scheduled time passed! Last window start: $lastWindowStart, scheduled: ${scheduledTime.millisecondsSinceEpoch}',
+        'Scheduled time passed! Last window start: $lastWindowStart, scheduled: ${scheduledTime.millisecondsSinceEpoch}',
       );
 
       // If we haven't started a new window since the scheduled time
       if (lastWindowStart == null ||
           lastWindowStart < scheduledTime.millisecondsSinceEpoch) {
-        logger.i('📅 ✅ Should start new window!');
+        logger.i('Should start new window!');
         return true;
       } else {
-        logger.i('📅 ⏸️ Already started window after scheduled time');
+        logger.i('Already started window after scheduled time');
       }
     } else {
-      logger.i('📅 ⏸️ Scheduled time not yet passed');
+      logger.i('Scheduled time not yet passed');
     }
 
     return false;
@@ -45,7 +45,7 @@ class DailyWindowService {
 
   /// Start a new daily window
   Future<void> startNewWindow() async {
-    logger.i('🔄 Starting new window...');
+    logger.i('Starting new window...');
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(
@@ -59,7 +59,7 @@ class DailyWindowService {
     // Schedule the next notification
     await NotificationService.instance.scheduleDailyPostReminder();
 
-    logger.i('🔄 ✅ New daily window started!');
+    logger.i('New daily window started!');
   }
 
   /// Get the current window ID
@@ -69,11 +69,11 @@ class DailyWindowService {
 
   /// Check and start new window if needed (call this when app opens)
   Future<void> checkAndStartNewWindowIfNeeded() async {
-    logger.i('📅 Checking if new window needed...');
+    logger.i('Checking if new window needed...');
     if (await shouldStartNewWindow()) {
       await startNewWindow();
     } else {
-      logger.i('📅 No new window needed');
+      logger.i('No new window needed');
     }
   }
 }

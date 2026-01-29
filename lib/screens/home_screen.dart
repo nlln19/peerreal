@@ -33,31 +33,19 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    logger.i('🏠 HomeScreen initState called');
     _init();
-    _startWindowChecker();
-  }
-
-  void _startWindowChecker() {
-    logger.i('⏰ Starting window checker timer (10 sec for testing)...');
-
-    // Check every 10 seconds for testing (change to 1 minute for production)
-
-    logger.i('✅ Window checker timer started');
   }
 
   Future<void> _init() async {
-    logger.i('🔄 HomeScreen _init started');
     await PermissionService.requestP2PPermissions();
     final ditto = await DittoService.instance.init();
     final windowId = await DittoService.instance.getCurrentDailyWindowId();
-    logger.i('📅 Initial window ID: $windowId');
+    logger.i('Initial window ID: $windowId');
     if (!mounted) return;
     setState(() {
       _ditto = ditto;
       _currentWindowId = windowId;
     });
-    logger.i('✅ HomeScreen _init complete');
   }
 
   Future<Uint8List?> _loadMyAvatar() async {
@@ -77,7 +65,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openCamera() async {
-    logger.i('📸 Opening Camera Screen');
     final result = await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const CameraScreen()),
@@ -98,7 +85,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openProfile() async {
-    logger.i('👤 Profile tapped');
     await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const ProfileScreen()),
@@ -250,7 +236,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 label: 'Feed',
                 selected: true,
                 onTap: () {
-                  logger.i('🏠 Home tapped');
                   if (_scrollController.hasClients) {
                     _scrollController.animateTo(
                       0,
@@ -369,7 +354,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               SizedBox(height: 16),
                               Text(
-                                'No moments yet today',
+                                'No reals yet today.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: Colors.white70,
@@ -379,7 +364,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               SizedBox(height: 8),
                               Text(
-                                'Be the first to share a moment today! 📸',
+                                'Be the first to share a real today!',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: Colors.white38,
@@ -422,7 +407,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// Widget for Bottom-Navigation-Items (Helper class)
+// Widget for Bottom-Navigation-Items
 class _BottomNavItem extends StatelessWidget {
   final IconData? icon;
   final Widget? iconWidget;

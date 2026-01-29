@@ -25,19 +25,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Choose your name'),
+          title: const Text('Choose your name.'),
           content: TextField(
             controller: controller,
-            decoration: const InputDecoration(hintText: 'Enter a unique name'),
+            decoration: const InputDecoration(hintText: 'Enter a unique name.'),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
+              child: const Text('Cancel.'),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, controller.text.trim()),
-              child: const Text('Save'),
+              child: const Text('Save.'),
             ),
           ],
         );
@@ -58,7 +58,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          ok ? 'Name set to "$newName"' : 'Name "$newName" is already taken',
+          ok ? 'Name set to "$newName"' : '"$newName" is already taken. Try another.',
         ),
       ),
     );
@@ -88,11 +88,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           final newPw2 = new2C.text;
 
           if (newPw != newPw2) {
-            safeSet(() => error = 'New passwords do not match');
+            safeSet(() => error = 'New passwords do not match.');
             return;
           }
           if (newPw.length < 6) {
-            safeSet(() => error = 'Password must be at least 6 characters');
+            safeSet(() => error = 'Password must be at least 6 characters.');
             return;
           }
 
@@ -188,7 +188,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onPressed: busy
                       ? null
                       : () => Navigator.of(dialogContext).pop(false),
-                  child: const Text('Cancel'),
+                  child: const Text('Cancel.'),
                 ),
                 TextButton(
                   onPressed: busy ? null : () => submit(setModalState),
@@ -198,7 +198,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           width: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Save'),
+                      : const Text('Save.'),
                 ),
               ],
             );
@@ -216,7 +216,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (changed == true && mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Password updated')));
+      ).showSnackBar(const SnackBar(content: Text('Password updated.')));
     }
   }
 
@@ -233,12 +233,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
+              child: const Text('Cancel.'),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
               style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text('Delete'),
+              child: const Text('Delete.'),
             ),
           ],
         );
@@ -279,12 +279,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
+              child: const Text('Cancel.'),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
               style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text('Logout'),
+              child: const Text('Logout.'),
             ),
           ],
         );
@@ -314,12 +314,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: const Text('Cancel.'),
           ),
           TextButton(
               onPressed: () => Navigator.pop(context, true),
               style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text('Delete'),
+              child: const Text('Delete.'),
             ),
         ],
       ),
@@ -394,7 +394,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               style: TextStyle(color: Colors.white),
             ),
             subtitle: const Text(
-              'Remove your avatar',
+              'Remove your avatar.',
               style: TextStyle(color: Colors.white54),
             ),
             onTap: _confirmDeleteProfilePicture,
@@ -409,7 +409,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               style: TextStyle(color: Colors.white),
             ),
             subtitle: const Text(
-              'Confirm old password and set a new one',
+              'Set a new password for your account.',
               style: TextStyle(color: Colors.white54),
             ),
             onTap: _changePassword,
@@ -422,7 +422,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             leading: const Icon(Icons.logout, color: Colors.white),
             title: const Text('Logout', style: TextStyle(color: Colors.white)),
             subtitle: const Text(
-              'Logout from this device',
+              'Logout from this device.',
               style: TextStyle(color: Colors.white54, fontSize: 12),
             ),
             onTap: _confirmLogout,
@@ -438,7 +438,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               style: TextStyle(color: Colors.redAccent),
             ),
             subtitle: const Text(
-              'Remove your Profile, Friendships and Reals',
+              'Remove your Profile, Friendships and Reals.',
               style: TextStyle(color: Colors.white54, fontSize: 12),
             ),
             onTap: _confirmDeleteAccount,

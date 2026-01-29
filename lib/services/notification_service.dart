@@ -59,11 +59,11 @@ class NotificationService {
   }
 
   Future<void> requestPermissions() async {
-    logger.i('🔔 Notification permissions requested (handled in init)');
+    logger.i('Notification permissions requested (handled in init)');
   }
 
   void _onNotificationTapped(NotificationResponse response) {
-    logger.i('🔔 Notification tapped: ${response.payload}');
+    logger.i('Notification tapped: ${response.payload}');
     // You can navigate to specific screens here based on payload
   }
 
@@ -92,7 +92,7 @@ class NotificationService {
         // If the existing scheduled time is in the future, don't reschedule
         if (existingTime.isAfter(now)) {
           logger.i(
-            '🔔 Already scheduled for ${existingTime.hour}:${existingTime.minute.toString().padLeft(2, '0')} - keeping it!',
+            'Already scheduled for ${existingTime.hour}:${existingTime.minute.toString().padLeft(2, '0')} - keeping it!',
           );
           return;
         }
@@ -110,7 +110,7 @@ class NotificationService {
         tomorrow.month,
         tomorrow.day,
         10, // Fixed hour: 10 AM
-        0, // Fixed minute: 00
+        00, // Fixed minute: 00
       );
 
       final tzScheduledTime = tz.TZDateTime.from(scheduledTime, tz.local);
@@ -137,11 +137,11 @@ class NotificationService {
 
       await _notifications.zonedSchedule(
         999, // Fixed ID for daily reminder
-        'WAKEY WAKEY TIME TO PEER REAL',
-        'Capture your moment now mf 🗣️🗣️🗣️',
+        'Time to PeerReal.',
+        'Capture your moment now.',
         tzScheduledTime,
         details,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         matchDateTimeComponents:
             DateTimeComponents.time, // Repeat daily at this time
       );
@@ -153,10 +153,10 @@ class NotificationService {
       );
 
       logger.i(
-        '🔔 Daily reminder scheduled for ${scheduledTime.hour}:${scheduledTime.minute.toString().padLeft(2, '0')} (fixed time for all users)',
+        'Daily reminder scheduled for ${scheduledTime.hour}:${scheduledTime.minute.toString().padLeft(2, '0')} (fixed time for all users)',
       );
     } catch (e) {
-      logger.e('❌ Error scheduling daily reminder: $e');
+      logger.e('Error scheduling daily reminder: $e');
     }
   }
 
@@ -168,7 +168,7 @@ class NotificationService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('scheduled_notification_time');
 
-    logger.i('🔔 Daily reminder cancelled');
+    logger.i('Daily reminder cancelled');
   }
 
   /// Send an immediate test notification (for debugging only)
@@ -200,11 +200,11 @@ class NotificationService {
       details,
     );
 
-    logger.i('🔔 Test notification sent');
+    logger.i('Test notification sent');
   }
 
   Future<void> cancelAll() async {
     await _notifications.cancelAll();
-    logger.i('🔔 All notifications cancelled');
+    logger.i('All notifications cancelled');
   }
 }

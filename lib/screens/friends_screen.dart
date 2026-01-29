@@ -42,7 +42,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
         if (mounted) setState(() {});
       });
     } catch (_) {
-      // Ignore (e.g., ditto not initialized yet)
+      // Ignore
     }
   }
 
@@ -219,7 +219,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
       query: '''
       SELECT * FROM profiles
       ORDER BY displayName ASC
-    ''',
+      ''',
       builder: (context, result) {
         var profiles = result.items
             .map((item) => Map<String, dynamic>.from(item.value))
@@ -346,7 +346,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
       SELECT * FROM friendships
       WHERE toPeerId = :me AND status = 'pending'
       ORDER BY createdAt DESC
-    ''',
+      ''',
       queryArgs: {'me': me},
       builder: (context, result) {
         final requests = result.items

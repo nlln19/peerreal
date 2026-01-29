@@ -53,10 +53,10 @@ class _MobileCameraScreenState extends State<MobileCameraScreen> {
 
       await _initForStep1();
     } catch (e) {
-      logger.e('❌ Fehler bei Kamera-Setup: $e');
+      logger.e('Error with Camera-Setup: $e');
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Kamera konnte nicht gestartet werden.\nFehler: $e';
+        _errorMessage = 'Camera could not be initialized.\nError: $e';
         _initializing = false;
       });
     }
@@ -113,7 +113,7 @@ class _MobileCameraScreenState extends State<MobileCameraScreen> {
   try {
     await controller.lockCaptureOrientation(DeviceOrientation.portraitUp);
   } catch (e) {
-    logger.e('❌ lockCaptureOrientation failed: $e');
+    logger.e('lockCaptureOrientation failed: $e');
   }
 
     
@@ -124,9 +124,9 @@ class _MobileCameraScreenState extends State<MobileCameraScreen> {
       _maxZoomLevel = await controller.getMaxZoomLevel();
       _currentZoomLevel = _minZoomLevel;
       await controller.setZoomLevel(_currentZoomLevel);
-      logger.i('🔍 Zoom range: $_minZoomLevel - $_maxZoomLevel');
+      logger.i('Zoom range: $_minZoomLevel - $_maxZoomLevel');
     } catch (e) {
-      logger.e('❌ Fehler beim Lesen der Zoom-Level: $e');
+      logger.e('Error reading zoom levels: $e');
     }
   }
 
@@ -139,7 +139,7 @@ class _MobileCameraScreenState extends State<MobileCameraScreen> {
 
       final XFile file = await controller.takePicture();
       final bytes = await file.readAsBytes();
-      logger.i('📸 Step $_step captured ${bytes.length} bytes');
+      logger.i('Step $_step captured ${bytes.length} bytes');
 
       if (!mounted) return;
 
@@ -157,7 +157,7 @@ class _MobileCameraScreenState extends State<MobileCameraScreen> {
         }
       }
     } catch (e) {
-      logger.e('❌ Fehler beim Foto machen: $e');
+      logger.e('Error taking picture: $e');
     }
   }
 
@@ -232,7 +232,7 @@ class _MobileCameraScreenState extends State<MobileCameraScreen> {
                           try {
                             await controller.setZoomLevel(_currentZoomLevel);
                           } catch (e) {
-                            logger.e('❌ Fehler beim Setzen des Zooms: $e');
+                            logger.e('Error setting zoom level: $e');
                           }
                         },
                         child: Transform.scale(

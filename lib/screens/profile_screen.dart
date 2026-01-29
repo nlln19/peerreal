@@ -71,7 +71,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (bytes != null) {
         await ProfileAvatarService.saveForPeer(me, bytes);
       } else {
-        // Avatar removed in Ditto → prevent stale local fallback.
         await ProfileAvatarService.clearForPeer(me);
       }
     } else {
@@ -102,7 +101,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         await DittoService.instance.setCurrentUserAvatar(bytes);
       }
     } catch (e) {
-      logger.e('❌ Failed to sync avatar: $e');
+      logger.e('Failed to sync avatar: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Avatar could not be synced')),
@@ -143,7 +142,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() => _avatarBytes = bytes);
       });
     } catch (e) {
-      logger.e('❌ Failed to start avatar observer: $e');
+      logger.e('Failed to start avatar observer: $e');
     }
   }
 
@@ -258,7 +257,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 24),
 
             const Text(
-              'Latest moments',
+              'Latest reals',
               style: TextStyle(
                 color: Colors.white70,
                 fontSize: 16,
@@ -284,7 +283,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   if (docs.isEmpty) {
                     return const Center(
                       child: Text(
-                        'Your PeerReal Memories will be added here later ✨',
+                        'Your PeerReals will be added here.',
                         textAlign: TextAlign.center,
                         style: TextStyle(color: Colors.white38, fontSize: 13),
                       ),
