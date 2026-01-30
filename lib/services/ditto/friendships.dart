@@ -1,8 +1,6 @@
 part of '../ditto_service.dart';
 
 mixin _DittoFriendshipsMixin on _DittoServiceBase {
-  // ---------------- FRIENDSHIPS ----------------
-
   Future<bool> sendFriendRequest(String toPeerId) async {
     final d = _ditto;
     if (d == null) return false;

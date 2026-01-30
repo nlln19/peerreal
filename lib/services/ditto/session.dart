@@ -1,8 +1,6 @@
 part of '../ditto_service.dart';
 
 mixin _DittoSessionMixin on _DittoServiceBase {
-  // ---------------- Session ----------------
-
   Future<void> loadSession() async {
     final prefs = await SharedPreferences.getInstance();
     _currentUserId = prefs.getString('currentUserId');

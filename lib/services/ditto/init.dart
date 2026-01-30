@@ -1,8 +1,6 @@
 part of '../ditto_service.dart';
 
 mixin _DittoInitMixin on _DittoServiceBase, _DittoSessionMixin {
-  // ---------------- Init ----------------
-
   Future<Ditto> init() async {
     if (_ditto != null) return _ditto!;
 

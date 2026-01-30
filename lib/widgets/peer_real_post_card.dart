@@ -69,7 +69,9 @@ class _PeerRealPostCardState extends State<PeerRealPostCard> {
   Future<void> _loadAuthorAvatar() async {
     if (_authorId.isEmpty) return;
     try {
-      final bytes = await DittoService.instance.getAvatarBytesForPeer(_authorId);
+      final bytes = await DittoService.instance.getAvatarBytesForPeer(
+        _authorId,
+      );
       if (!mounted) return;
       setState(() {
         _authorAvatarBytes = bytes;
@@ -114,7 +116,7 @@ class _PeerRealPostCardState extends State<PeerRealPostCard> {
     }
   }
 
-Future<void> _showReactionPopup(BuildContext context, Offset position) async {
+  Future<void> _showReactionPopup(BuildContext context, Offset position) async {
     final postId = widget.doc['_id'] as String?;
     if (postId == null) return;
 
@@ -151,7 +153,6 @@ Future<void> _showReactionPopup(BuildContext context, Offset position) async {
     }
   }
 
-  
   void _openProfile() {
     if (_authorId.isEmpty) return;
 
@@ -212,14 +213,16 @@ Future<void> _showReactionPopup(BuildContext context, Offset position) async {
     final smallImage = _showMainAsLarge ? _selfieData : _imageData;
 
     // Get reaction counts and user state directly from the doc
-    final reactionData = DittoService.instance.getReactionCountsFromDoc(widget.doc);
+    final reactionData = DittoService.instance.getReactionCountsFromDoc(
+      widget.doc,
+    );
     final thumbsUpCount = reactionData['thumbsUp'] as int? ?? 0;
     final thumbsDownCount = reactionData['thumbsDown'] as int? ?? 0;
     final userHasThumbsUp = reactionData['userHasThumbsUp'] as bool? ?? false;
-    final userHasThumbsDown = reactionData['userHasThumbsDown'] as bool? ?? false;
+    final userHasThumbsDown =
+        reactionData['userHasThumbsDown'] as bool? ?? false;
 
-    
-   return GestureDetector(
+    return GestureDetector(
       onLongPressStart: (details) {
         _showReactionPopup(context, details.globalPosition);
       },
@@ -274,7 +277,10 @@ Future<void> _showReactionPopup(BuildContext context, Offset position) async {
 
             Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420, maxHeight: 560),
+                constraints: const BoxConstraints(
+                  maxWidth: 420,
+                  maxHeight: 560,
+                ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(18),
                   child: AspectRatio(
@@ -431,12 +437,7 @@ class _ReactionDisplay extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            emoji,
-            style: TextStyle(
-              fontSize: isActive ? 18 : 16,
-            ),
-          ),
+          Text(emoji, style: TextStyle(fontSize: isActive ? 18 : 16)),
           const SizedBox(width: 6),
           Text(
             count.toString(),

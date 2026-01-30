@@ -58,7 +58,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          ok ? 'Name set to "$newName"' : '"$newName" is already taken. Try another.',
+          ok
+              ? 'Name set to "$newName"'
+              : '"$newName" is already taken. Try another.',
         ),
       ),
     );
@@ -252,9 +254,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          ok ? 'Account deleted' : 'Failed to delete account',
-        ),
+        content: Text(ok ? 'Account deleted' : 'Failed to delete account'),
       ),
     );
 
@@ -302,25 +302,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-
   Future<void> _confirmDeleteProfilePicture() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete profile picture?'),
-        content: const Text(
-          'This will remove your profile picture.',
-        ),
+        content: const Text('This will remove your profile picture.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancel.'),
           ),
           TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text('Delete.'),
-            ),
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete.'),
+          ),
         ],
       ),
     );
@@ -361,10 +358,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         elevation: 0,
         title: Text(
           "Settings",
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
       body: ListView(
@@ -399,7 +393,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             onTap: _confirmDeleteProfilePicture,
           ),
-
 
           // Change password
           ListTile(

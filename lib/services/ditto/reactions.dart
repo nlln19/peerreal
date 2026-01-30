@@ -1,9 +1,6 @@
 part of '../ditto_service.dart';
 
 mixin _DittoReactionsMixin on _DittoServiceBase {
-  // ---------------- REACTIONS (with toggle and user tracking) ----------------
-
-  // reactionType: 1 for thumbs up, 0 for thumbs down
   Future<void> toggleReactionOnPost({
     required String postId,
     required int reactionType, // 1 = thumbs up, 0 = thumbs down
@@ -37,10 +34,12 @@ mixin _DittoReactionsMixin on _DittoServiceBase {
       String thumbsUpUsers = doc['thumbsUpUsers'] as String? ?? '';
       String thumbsDownUsers = doc['thumbsDownUsers'] as String? ?? '';
 
-      List<String> thumbsUpList =
-          thumbsUpUsers.isEmpty ? [] : thumbsUpUsers.split(',');
-      List<String> thumbsDownList =
-          thumbsDownUsers.isEmpty ? [] : thumbsDownUsers.split(',');
+      List<String> thumbsUpList = thumbsUpUsers.isEmpty
+          ? []
+          : thumbsUpUsers.split(',');
+      List<String> thumbsDownList = thumbsDownUsers.isEmpty
+          ? []
+          : thumbsDownUsers.split(',');
 
       if (reactionType == 1) {
         // Thumbs Up
@@ -129,10 +128,12 @@ mixin _DittoReactionsMixin on _DittoServiceBase {
     final thumbsUpUsers = doc['thumbsUpUsers'] as String? ?? '';
     final thumbsDownUsers = doc['thumbsDownUsers'] as String? ?? '';
 
-    final thumbsUpList =
-        thumbsUpUsers.isEmpty ? <String>[] : thumbsUpUsers.split(',');
-    final thumbsDownList =
-        thumbsDownUsers.isEmpty ? <String>[] : thumbsDownUsers.split(',');
+    final thumbsUpList = thumbsUpUsers.isEmpty
+        ? <String>[]
+        : thumbsUpUsers.split(',');
+    final thumbsDownList = thumbsDownUsers.isEmpty
+        ? <String>[]
+        : thumbsDownUsers.split(',');
 
     return {
       'thumbsUp': thumbsUp,

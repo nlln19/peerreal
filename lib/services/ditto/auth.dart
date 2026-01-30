@@ -1,8 +1,7 @@
 part of '../ditto_service.dart';
 
-mixin _DittoAuthMixin on _DittoServiceBase, _DittoSessionMixin, _DittoProfilesMixin {
-  // ---------------- AUTH ----------------
-
+mixin _DittoAuthMixin
+    on _DittoServiceBase, _DittoSessionMixin, _DittoProfilesMixin {
   Future<Map<String, dynamic>?> _getPasswordMapByDocId(String docId) async {
     final d = _ditto;
     if (d == null) return null;

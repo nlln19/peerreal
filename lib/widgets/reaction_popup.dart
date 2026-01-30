@@ -51,9 +51,7 @@ class _ReactionPopupState extends State<ReactionPopup>
             onTap: () => Navigator.of(context).pop(),
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.3),
-              ),
+              child: Container(color: Colors.black.withValues(alpha: 0.3)),
             ),
           ),
         ),
@@ -187,10 +185,7 @@ class _ReactionButtonState extends State<_ReactionButton>
           child: Transform.scale(
             scale: scale,
             child: Center(
-              child: Text(
-                widget.emoji,
-                style: const TextStyle(fontSize: 28),
-              ),
+              child: Text(widget.emoji, style: const TextStyle(fontSize: 28)),
             ),
           ),
         ),

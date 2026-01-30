@@ -3,10 +3,7 @@ import 'package:flutter/material.dart';
 class CountBadge extends StatelessWidget {
   final int count;
 
-  const CountBadge({
-    super.key,
-    required this.count,
-  });
+  const CountBadge({super.key, required this.count});
 
   @override
   Widget build(BuildContext context) {

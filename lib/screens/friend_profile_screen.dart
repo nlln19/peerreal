@@ -170,10 +170,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
         elevation: 0,
         title: Text(
           "$name's Profile",
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
       body: Padding(

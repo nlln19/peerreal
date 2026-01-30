@@ -1,8 +1,6 @@
 part of '../ditto_service.dart';
 
 mixin _DittoProfilesMixin on _DittoServiceBase, _DittoSessionMixin {
-  // ---------------- PROFILE / USERNAME ----------------
-
   Future<String?> _primaryProfileDocIdForUser(String userId) async {
     final d = _ditto;
     if (d == null) return null;

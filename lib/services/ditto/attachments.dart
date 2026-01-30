@@ -1,8 +1,6 @@
 part of '../ditto_service.dart';
 
 mixin _DittoAttachmentsMixin on _DittoServiceBase {
-  // ---------------- ATTACHMENTS ----------------
-
   Future<Uint8List?> _loadAttachmentFromToken(
     Map<String, dynamic>? attachmentToken,
   ) async {

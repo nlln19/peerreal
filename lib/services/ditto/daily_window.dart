@@ -1,8 +1,6 @@
 part of '../ditto_service.dart';
 
 mixin _DittoDailyWindowMixin on _DittoServiceBase {
-  // ---------------- DAILY WINDOW LOGIC ----------------
-
   /// Generate a daily window id based on the local date and the configured reminder time.
   ///
   /// If "now" is before today's reminder time, the window date is considered **yesterday**
@@ -27,15 +25,15 @@ mixin _DittoDailyWindowMixin on _DittoServiceBase {
     final now = DateTime.now();
 
     // Keep window id aligned with the locally scheduled reminder time (defaults to 10:00).
-    final scheduled =
-        await NotificationService.instance.getScheduledNotificationTime();
+    final scheduled = await NotificationService.instance
+        .getScheduledNotificationTime();
     final hour = scheduled?.hour ?? 10;
     final minute = scheduled?.minute ?? 0;
 
     final newWindowId = _generateDailyWindowIdAt(now, hour, minute);
 
     if (_currentDailyWindowId != newWindowId) {
-      logger.i('📅 Window changed: $_currentDailyWindowId → $newWindowId');
+      logger.i('Window changed: $_currentDailyWindowId → $newWindowId');
       _currentDailyWindowId = newWindowId;
     }
 
@@ -45,8 +43,8 @@ mixin _DittoDailyWindowMixin on _DittoServiceBase {
   Future<void> checkAndUpdateDailyWindow() async {
     final now = DateTime.now();
 
-    final scheduled =
-        await NotificationService.instance.getScheduledNotificationTime();
+    final scheduled = await NotificationService.instance
+        .getScheduledNotificationTime();
     final hour = scheduled?.hour ?? 10;
     final minute = scheduled?.minute ?? 0;
 

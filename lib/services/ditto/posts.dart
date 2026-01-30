@@ -1,8 +1,6 @@
 part of '../ditto_service.dart';
 
 mixin _DittoPostsMixin on _DittoServiceBase, _DittoDailyWindowMixin {
-  // ---------------- POSTS / IMAGES ----------------
-
   Future<void> addImageFromBytes(
     Uint8List imageBytes, {
     String? fileName,
@@ -19,8 +17,8 @@ mixin _DittoPostsMixin on _DittoServiceBase, _DittoDailyWindowMixin {
       final dailyWindowId = await getCurrentDailyWindowId();
 
       final newDocument = {
-        "name": fileName ??
-            'photo_${DateTime.now().millisecondsSinceEpoch}.jpg',
+        "name":
+            fileName ?? 'photo_${DateTime.now().millisecondsSinceEpoch}.jpg',
         "createdAt": DateTime.now().millisecondsSinceEpoch,
         "attachment": attachment,
         "author": activeUserId,
@@ -63,8 +61,8 @@ mixin _DittoPostsMixin on _DittoServiceBase, _DittoDailyWindowMixin {
       final dailyWindowId = await getCurrentDailyWindowId();
 
       final newDocument = {
-        "name": fileName ??
-            'peerreal_${DateTime.now().millisecondsSinceEpoch}.jpg',
+        "name":
+            fileName ?? 'peerreal_${DateTime.now().millisecondsSinceEpoch}.jpg',
         "createdAt": DateTime.now().millisecondsSinceEpoch,
         "attachment": mainAttachment,
         "selfieAttachment": selfieAttachment,

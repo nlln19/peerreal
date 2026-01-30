@@ -56,16 +56,17 @@ class _NextPostTimerState extends State<NextPostTimer> {
   }
 
   Future<void> _loadScheduledTime() async {
-    final time =
-        await NotificationService.instance.getScheduledNotificationTime();
+    final time = await NotificationService.instance
+        .getScheduledNotificationTime();
     if (mounted) {
       setState(() {
         _scheduledTime = time;
         // Compute remaining immediately so the UI can show without waiting for
         // the first timer tick.
         final now = DateTime.now();
-        _timeRemaining =
-            (time != null && time.isAfter(now)) ? time.difference(now) : null;
+        _timeRemaining = (time != null && time.isAfter(now))
+            ? time.difference(now)
+            : null;
       });
     }
   }

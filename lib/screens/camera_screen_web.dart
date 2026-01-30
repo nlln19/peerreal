@@ -111,9 +111,7 @@ class _WebCameraScreenState extends State<WebCameraScreen> {
 
       final XFile file = await controller.takePicture();
       final bytes = await file.readAsBytes();
-      logger.i(
-        'WebCameraScreen: Step $_step captured ${bytes.length} bytes',
-      );
+      logger.i('WebCameraScreen: Step $_step captured ${bytes.length} bytes');
 
       if (!mounted) return;
 

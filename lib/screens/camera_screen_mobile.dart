@@ -1,6 +1,5 @@
 // ignore_for_file: unused_field
 
-
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -109,14 +108,12 @@ class _MobileCameraScreenState extends State<MobileCameraScreen> {
     await initializeFuture;
     await initializeFuture;
 
-  // Fixiert Kamera ausrichtung
-  try {
-    await controller.lockCaptureOrientation(DeviceOrientation.portraitUp);
-  } catch (e) {
-    logger.e('lockCaptureOrientation failed: $e');
-  }
-
-    
+    // Fixiert Kamera ausrichtung
+    try {
+      await controller.lockCaptureOrientation(DeviceOrientation.portraitUp);
+    } catch (e) {
+      logger.e('lockCaptureOrientation failed: $e');
+    }
 
     // Zoom
     try {
@@ -177,10 +174,7 @@ class _MobileCameraScreenState extends State<MobileCameraScreen> {
         backgroundColor: const Color(0xFF05050A),
         title: Text(
           isStep1 ? 'Capture the moment' : 'Take a selfie',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
       // safes from Notch

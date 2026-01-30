@@ -4,7 +4,8 @@ import 'dart:typed_data';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfileAvatarService {
-  static String _keyForPeer(String peerId) => 'peerreal.profile_avatar_b64.$peerId';
+  static String _keyForPeer(String peerId) =>
+      'peerreal.profile_avatar_b64.$peerId';
 
   static Future<Uint8List?> loadForPeer(String peerId) async {
     final prefs = await SharedPreferences.getInstance();

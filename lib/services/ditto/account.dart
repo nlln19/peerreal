@@ -1,8 +1,6 @@
 part of '../ditto_service.dart';
 
 mixin _DittoAccountMixin on _DittoServiceBase {
-  // ---------------- DELETE ACCOUNT ----------------
-
   Future<bool> deleteAccountAndData() async {
     final d = _ditto;
     if (d == null) return false;

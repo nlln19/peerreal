@@ -1,8 +1,7 @@
 part of '../ditto_service.dart';
 
-mixin _DittoAvatarMixin on _DittoServiceBase, _DittoProfilesMixin, _DittoAttachmentsMixin {
-  // ---------------- PROFILE AVATAR ----------------
-
+mixin _DittoAvatarMixin
+    on _DittoServiceBase, _DittoProfilesMixin, _DittoAttachmentsMixin {
   Future<void> setCurrentUserAvatar(Uint8List avatarBytes) async {
     final d = _ditto;
     if (d == null) {

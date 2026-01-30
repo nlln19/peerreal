@@ -36,7 +36,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _startAvatarObserver();
   }
 
-
   @override
   void dispose() {
     _avatarSub?.cancel();
@@ -60,6 +59,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _displayName = name;
     });
   }
+
   Future<void> _loadAvatar() async {
     final service = DittoService.instance;
     final me = service.activeUserId;
@@ -158,10 +158,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         elevation: 0,
         title: Text(
           "Profile",
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
         actions: [
           IconButton(
@@ -183,7 +180,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // Avatar + Name
             Row(
               children: [
-
                 Stack(
                   children: [
                     InkWell(
@@ -249,7 +245,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 24),
 
             _ProfileStatsRow(),
